@@ -493,6 +493,76 @@
 
                 </div>
 
+                <!--view buttons-->
+                <div class="card mt-3 mb-3">
+
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-folder2-open"></i>
+                            Device Data
+                        </h5>
+                    </div>
+
+                    <div class="card-body">
+
+                        <button class="btn btn-primary" onclick="openContacts()">
+
+                            <i class="bi bi-person-lines-fill"></i>
+                            View Contacts
+
+                        </button>
+
+                        <button class="btn btn-success" onclick="openImages()">
+
+                            <i class="bi bi-images"></i>
+                            View Images
+
+                        </button>
+
+                        <button class="btn btn-danger" onclick="getVideos()">
+                            <i class="bi bi-camera-video-fill"></i>
+                            Get Videos
+                        </button>
+
+                        <button class="btn btn-primary" onclick="viewVideos()">
+
+                            <i class="bi bi-play-circle"></i>
+
+                            View Videos
+
+                        </button>
+
+                        <button class="btn btn-warning me-2" onclick="getAudios()">
+
+                            <i class="bi bi-mic-fill"></i>
+                            Get Audio
+
+                        </button>
+
+
+                        <button id="viewAudioBtn" class="btn btn-primary" onclick="viewAudios()">
+
+                            <i class="bi bi-play-circle"></i>
+                            View Audio
+
+                        </button>
+
+                        <button class="btn btn-danger" onclick="allowMic()">
+
+                            🎤 Allow Mic
+
+                        </button>
+
+                        <button class="btn btn-success" onclick="openCamera()">
+
+                            Live Camera
+
+                        </button>
+
+                    </div>
+
+                </div>
+
                 <!-- Tracking Settings -->
 
                 <div class="card border-primary">
@@ -604,3 +674,50 @@
         </div>
 
     </div>
+    <div class="modal fade" id="contactModal" tabindex="-1">
+
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">Contacts</h5>
+
+                    <button class="btn-close" data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <table class="table table-bordered">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Name</th>
+                                <th>Phone</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="contactTable"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>

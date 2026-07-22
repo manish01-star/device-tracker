@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Device Contacts</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+
+    <div class="container mt-4">
+
+        <div class="d-flex justify-content-between align-items-center">
+
+            <div>
+
+                <h3 class="mb-0">Device Contacts</h3>
+
+                <small class="text-muted">
+                    Total :
+                    <span id="totalContacts">0</span>
+                </small>
+
+            </div>
+
+            <div>
+
+                <button
+                    class="btn btn-danger"
+                    onclick="deleteContacts()">
+
+                    Delete All
+
+                </button>
+
+                <a href="/dashboard.html"
+                    class="btn btn-secondary">
+
+                    Back
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <hr>
+
+        <div class="row mb-3">
+
+            <div class="col-md-4">
+
+                <input
+                    id="search"
+                    class="form-control"
+                    placeholder="Search Contact">
+
+            </div>
+
+        </div>
+
+        <table class="table table-bordered table-hover">
+
+            <thead>
+
+                <tr>
+
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="contactTable">
+
+            </tbody>
+
+        </table>
+
+        <nav>
+
+            <ul class="pagination justify-content-center"
+                id="pagination">
+
+            </ul>
+
+        </nav>
+
+    </div>
+
+    <script>
+
+        const params =
+            new URLSearchParams(window.location.search);
+
+        const deviceId =
+            params.get("deviceId");
+
+        let contacts = [];
+
+        let filteredContacts = [];
+
+        let currentPage = 1;
+
+        const pageSize = 20;
+
+        loadContacts();
+
+        document
+            .getElementById("search")
+            .addEventListener("keyup", searchContacts);
+
+        async function loadContacts() {
+
+            const response =
+                await fetch("/media/contact/" + deviceId);
+
+            contacts =
+                await response.json();
+
+            filteredContacts = contacts;
+
+            document.getElementById("totalContacts")
+                .innerHTML = contacts.length;
+
+            renderTable();
+
+        }
+
+        function renderTable() {
+
+            let start =
+                (currentPage - 1) * pageSize;
+
+            let end =
+                start + pageSize;
+
+            let page =
+                filteredContacts.slice(start, end);
+
+            let html = "";
+
+            page.forEach((c, index) => {
+
+                html += `
+
+                <tr>
+
+                    <td>${start + index + 1}</td>
+
+                    <td>${c.contactName}</td>
+
+                    <td>${c.phoneNumber}</td>
+
+                </tr>
+
+                `;
+
+            });
+
+            document
+                .getElementById("contactTable")
+                .innerHTML = html;
+
+            renderPagination();
+
+        }
+
+        function renderPagination() {
+
+            let totalPages =
+                Math.ceil(filteredContacts.length / pageSize);
+
+            let html = "";
+
+            for (let i = 1; i <= totalPages; i++) {
+
+                html += `
+
+                <li class="page-item ${i==currentPage?'active':''}">
+
+                    <a
+                        class="page-link"
+                        href="#"
+                        onclick="gotoPage(${i})">
+
+                        ${i}
+
+                    </a>
+
+                </li>
+
+                `;
+
+            }
+
+            document
+                .getElementById("pagination")
+                .innerHTML = html;
+
+        }
+
+        function gotoPage(page){
+
+            currentPage = page;
+
+            renderTable();
+
+        }
+
+        function searchContacts(){
+
+            let keyword =
+                this.value.toLowerCase();
+
+            filteredContacts =
+                contacts.filter(c=>
+
+                    c.contactName
+                        .toLowerCase()
+                        .includes(keyword)
+
+                    ||
+
+                    c.phoneNumber
+                        .toLowerCase()
+                        .includes(keyword)
+
+                );
+
+            currentPage = 1;
+
+            renderTable();
+
+        }
+
+        async function deleteContacts(){
+
+            if(!confirm(
+                "Are you sure you want to delete all contacts?"
+            )){
+                return;
+            }
+
+            await fetch(
+                "/media/contact/" + deviceId,
+                {
+                    method:"DELETE"
+                }
+            );
+
+            loadContacts();
+
+            alert("Contacts Deleted");
+
+        }
+
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Live Camera</title>
+
+    <!-- <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/webrtc-adapter@9.0.3/out/adapter.js"></script>
+</head>
+
+<body>
+
+    <h2>Live Camera</h2>
+
+    <button onclick="startCamera()">
+        Start Live
+    </button>
+
+    <button onclick="stopCamera()">
+        Stop
+    </button>
+
+    <br><br>
+
+    <video id="remoteVideo" autoplay playsinline controls style="width:900px;height:600px;background:black">
+    </video>
+
+    <script>
+
+        const params =
+            new URLSearchParams(location.search);
+
+        const deviceId =
+            params.get("deviceId");
+
+        let peerConnection = null;
+
+        const configuration = {
+
+            iceServers: [
+
+                {
+                    urls: "stun:stun.l.google.com:19302"
+                }
+
+            ]
+
+        };
+
+        const socket =
+
+            new WebSocket(
+
+                "ws://"
+
+                +
+
+                location.host
+
+                +
+
+                "/signal?type=browser&deviceId="
+
+                +
+
+                deviceId
+
+            );
+
+
+        socket.onopen = function () {
+
+            console.log("Browser Connected");
+
+        };
+
+
+        socket.onclose = function () {
+
+            console.log("Socket Closed");
+
+        };
+
+
+        socket.onerror = function (e) {
+
+            console.log(e);
+
+        };
+
+
+        socket.onmessage = async function (event) {
+
+            console.log("RAW =", event.data);
+            const message = JSON.parse(event.data);
+
+            console.log("PARSED =", message);
+
+            switch (message.type) {
+
+                case "offer":
+
+                    await receiveOffer(message);
+
+                    break;
+
+                case "candidate":
+
+                    if (peerConnection) {
+
+                        await peerConnection.addIceCandidate(
+
+                            new RTCIceCandidate({
+
+                                candidate:
+
+                                    message.candidate,
+
+                                sdpMid:
+
+                                    message.sdpMid,
+
+                                sdpMLineIndex:
+
+                                    message.sdpMLineIndex
+
+                            })
+
+                        );
+
+                    }
+
+                    break;
+
+                case "stop":
+
+                    stopPeer();
+
+                    break;
+
+            }
+
+        };
+
+
+
+        async function receiveOffer(message) {
+            console.log("Offer Received");
+
+            stopPeer();
+
+            peerConnection =
+
+                new RTCPeerConnection(configuration);
+
+
+            peerConnection.ontrack = function (event) {
+
+                console.log("TRACK RECEIVED");
+                console.log(event);
+
+                document.getElementById("remoteVideo").srcObject = event.streams[0];
+
+            };
+
+
+            peerConnection.onicecandidate = function (event) {
+
+                if (event.candidate) {
+
+                    socket.send(
+
+                        JSON.stringify({
+
+                            deviceId:
+
+                                deviceId,
+
+                            type:
+
+                                "candidate",
+
+                            candidate:
+
+                                event.candidate.candidate,
+
+                            sdpMid:
+
+                                event.candidate.sdpMid,
+
+                            sdpMLineIndex:
+
+                                event.candidate.sdpMLineIndex
+
+                        })
+
+                    );
+
+                }
+
+            };
+
+
+            peerConnection.onconnectionstatechange = function () {
+
+                console.log(
+
+                    peerConnection.connectionState
+
+                );
+
+            };
+
+
+            await peerConnection.setRemoteDescription(
+
+                new RTCSessionDescription({
+
+                    type: "offer",
+
+                    sdp: message.sdp
+
+                })
+
+            );
+
+
+            const answer =
+
+                await peerConnection.createAnswer();
+
+
+            await peerConnection.setLocalDescription(answer);
+
+
+            socket.send(
+
+                JSON.stringify({
+
+                    deviceId:
+
+                        deviceId,
+
+                    type:
+
+                        "answer",
+
+                    sdp:
+
+                        answer.sdp
+
+                })
+
+            );
+
+        }
+
+
+
+        function startCamera() {
+
+            fetch(
+
+                "/media/camera/request/"
+
+                +
+
+                deviceId,
+
+                {
+
+                    method: "POST"
+
+                }
+
+            );
+
+        }
+
+
+
+        function stopCamera() {
+
+            fetch(
+
+                "/media/camera/stopped/"
+
+                +
+
+                deviceId,
+
+                {
+
+                    method: "POST"
+
+                }
+
+            );
+
+            stopPeer();
+
+        }
+
+
+
+        function stopPeer() {
+
+            if (peerConnection) {
+
+                peerConnection.close();
+
+                peerConnection = null;
+
+            }
+
+            document
+                .getElementById("remoteVideo")
+                .srcObject = null;
+
+        }
+
+
+
+        window.onbeforeunload = function () {
+
+            stopPeer();
+
+            socket.close();
+
+        };
+
+    </script>
+
+</body>
+
+</html>

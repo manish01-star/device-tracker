@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Device Audios</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <div>
+
+            <h3>🎵 Device Audios</h3>
+
+            <small id="totalCount"
+                   class="text-muted"></small>
+
+        </div>
+
+        <div>
+
+            <button
+                    class="btn btn-danger me-2"
+                    onclick="deleteAll()">
+
+                Delete All
+
+            </button>
+
+            <a href="/dashboard.html"
+               class="btn btn-secondary">
+
+                Back
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="row"
+         id="audioGrid">
+
+    </div>
+
+    <div class="d-flex justify-content-center mt-4">
+
+        <nav>
+
+            <ul class="pagination"
+                id="pagination">
+
+            </ul>
+
+        </nav>
+
+    </div>
+
+</div>
+
+<script>
+
+const params =
+        new URLSearchParams(window.location.search);
+
+const deviceId =
+        params.get("deviceId");
+
+let audios=[];
+
+let currentPage=1;
+
+const pageSize=12;
+
+loadAudios();
+
+async function loadAudios(){
+
+    const response =
+            await fetch("/media/audio/"+deviceId);
+
+    audios =
+            await response.json();
+
+    document.getElementById("totalCount")
+            .innerHTML="Total Audios : "+audios.length;
+
+    renderPage();
+
+}
+
+function renderPage(){
+
+    let html="";
+
+    const start =
+            (currentPage-1)*pageSize;
+
+    const end =
+            start+pageSize;
+
+    audios
+            .slice(start,end)
+            .forEach(audio=>{
+
+        html+=`
+
+<div class="col-md-4 mb-4">
+
+<div class="card shadow-sm">
+
+<div class="card-body">
+
+<h6 class="text-truncate">
+
+${audio.audioName}
+
+</h6>
+
+<audio controls
+       class="w-100">
+
+<source src="${audio.audioUrl}">
+
+</audio>
+
+<div class="mt-2">
+
+<small class="text-muted">
+
+${formatSize(audio.audioSize)}
+
+</small>
+
+</div>
+
+<a href="${audio.audioUrl}"
+
+class="btn btn-sm btn-primary mt-2"
+
+download>
+
+Download
+
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+    });
+
+    if(audios.length===0){
+
+        html=`
+
+<div class="col-12">
+
+<div class="alert alert-warning text-center">
+
+No Audio Found
+
+</div>
+
+</div>
+
+`;
+
+    }
+
+    document.getElementById("audioGrid")
+            .innerHTML=html;
+
+    renderPagination();
+
+}
+
+function renderPagination(){
+
+    let html="";
+
+    const pages =
+            Math.ceil(audios.length/pageSize);
+
+    for(let i=1;i<=pages;i++){
+
+        html+=`
+
+<li class="page-item ${i===currentPage?"active":""}">
+
+<a class="page-link"
+
+href="#"
+
+onclick="gotoPage(${i})">
+
+${i}
+
+</a>
+
+</li>
+
+`;
+
+    }
+
+    document.getElementById("pagination")
+            .innerHTML=html;
+
+}
+
+function gotoPage(page){
+
+    currentPage=page;
+
+    renderPage();
+
+}
+
+async function deleteAll(){
+
+    if(!confirm("Delete all audios ?")){
+
+        return;
+
+    }
+
+    const response =
+            await fetch(
+
+                    "/media/audio/"+deviceId,
+
+                    {
+
+                        method:"DELETE"
+
+                    }
+
+            );
+
+    if(response.ok){
+
+        alert("Audios Deleted");
+
+        loadAudios();
+
+    }
+
+    else{
+
+        alert("Delete Failed");
+
+    }
+
+}
+
+function formatSize(bytes){
+
+    if(bytes<1024){
+
+        return bytes+" B";
+
+    }
+
+    if(bytes<1024*1024){
+
+        return (bytes/1024).toFixed(2)+" KB";
+
+    }
+
+    if(bytes<1024*1024*1024){
+
+        return (bytes/1024/1024).toFixed(2)+" MB";
+
+    }
+
+    return (bytes/1024/1024/1024).toFixed(2)+" GB";
+
+}
+
+</script>
+
+</body>
+
+</html>

@@ -47,4 +47,11 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.play.services.location)
     implementation(libs.work.runtime)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    implementation("io.github.webrtc-sdk:android:125.6422.06")
+    implementation("androidx.camera:camera-core:1.4.0")
+    implementation("androidx.camera:camera-camera2:1.4.0")
+    implementation("androidx.camera:camera-lifecycle:1.4.0")
+    implementation("androidx.camera:camera-view:1.4.0")
 }

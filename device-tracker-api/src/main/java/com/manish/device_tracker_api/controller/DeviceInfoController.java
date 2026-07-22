@@ -2,19 +2,17 @@ package com.manish.device_tracker_api.controller;
 
 import com.manish.device_tracker_api.dto.ApiResponse;
 import com.manish.device_tracker_api.dto.DeviceInfoResponse;
-import com.manish.device_tracker_api.dto.DeviceLocationHistoryResponse;
 import com.manish.device_tracker_api.dto.RegisterDeviceRequest;
 import com.manish.device_tracker_api.dto.RegisterDeviceResponse;
 import com.manish.device_tracker_api.dto.TrackingConfigResponse;
 import com.manish.device_tracker_api.dto.UpdateDeviceRequest;
 import com.manish.device_tracker_api.dto.UpdateTrackingRequest;
+import com.manish.device_tracker_api.entity.DeviceLocationHistory;
 import com.manish.device_tracker_api.service.DeviceInfoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
-import java.util.List;
-
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/device")
@@ -109,4 +107,18 @@ public class DeviceInfoController {
                                 .data(deviceInfoService.getTrackingConfig(deviceId))
                                 .build();
         }
+
+        @GetMapping("/history/{deviceId}")
+        public ApiResponse<List<DeviceLocationHistory>> history(
+
+                        @PathVariable String deviceId) {
+
+                return ApiResponse.<List<DeviceLocationHistory>>builder()
+                                .success(true)
+                                .message("Success")
+                                .data(deviceInfoService.getHistory(deviceId))
+                                .build();
+
+        }
+
 }

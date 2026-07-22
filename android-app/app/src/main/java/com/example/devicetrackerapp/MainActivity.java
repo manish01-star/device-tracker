@@ -3,6 +3,7 @@ package com.example.devicetrackerapp;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -19,6 +20,9 @@ import com.example.devicetrackerapp.dto.RegisterDeviceRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceResponse;
 import com.example.devicetrackerapp.service.DeviceTrackingService;
 import com.example.devicetrackerapp.utils.DeviceUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -47,24 +51,65 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkPermission() {
 
-        if (ActivityCompat.checkSelfPermission(
+        requestAllPermissions();
+
+        // Register device regardless of permissions
+        registerDevice();
+    }
+
+    private boolean hasPermission(String permission) {
+        return ActivityCompat.checkSelfPermission(
                 this,
-                Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
+                permission
+        ) == PackageManager.PERMISSION_GRANTED;
+    }
 
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                    },
-                    LOCATION_PERMISSION
-            );
+    private void requestAllPermissions() {
 
-            return;
+        List<String> permissions = new ArrayList<>();
+
+        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
+            permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if (!hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
+            permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+
+        if (!hasPermission(Manifest.permission.CAMERA))
+            permissions.add(Manifest.permission.CAMERA);
+
+        if (!hasPermission(Manifest.permission.RECORD_AUDIO))
+            permissions.add(Manifest.permission.RECORD_AUDIO);
+
+        if (!hasPermission(Manifest.permission.READ_CONTACTS))
+            permissions.add(Manifest.permission.READ_CONTACTS);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+            if (!hasPermission(Manifest.permission.POST_NOTIFICATIONS))
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS);
+
+            if (!hasPermission(Manifest.permission.READ_MEDIA_AUDIO))
+                permissions.add(Manifest.permission.READ_MEDIA_AUDIO);
+
+            if (!hasPermission(Manifest.permission.READ_MEDIA_IMAGES))
+                permissions.add(Manifest.permission.READ_MEDIA_IMAGES);
+
+            if (!hasPermission(Manifest.permission.READ_MEDIA_VIDEO))
+                permissions.add(Manifest.permission.READ_MEDIA_VIDEO);
+
+        } else {
+
+            if (!hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE))
+                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         }
 
-        registerDevice();
+        if (!permissions.isEmpty()) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    permissions.toArray(new String[0]),
+                    LOCATION_PERMISSION
+            );
+        }
     }
 
     @Override
@@ -76,27 +121,37 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(
                 requestCode,
                 permissions,
-                grantResults);
+                grantResults
+        );
 
         if (requestCode == LOCATION_PERMISSION) {
-
-            if (grantResults.length > 0 &&
-                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                registerDevice();
-
-            } else {
-
-                Toast.makeText(
-                        this,
-                        "Location Permission Required",
-                        Toast.LENGTH_SHORT
-                ).show();
+            if (grantResults.length == 0) {
+                return;
             }
+
+            for (int i = 0; i < permissions.length; i++) {
+
+                if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+
+                    Log.d("PERMISSION",
+                            permissions[i] + " Granted");
+
+                } else {
+
+                    Log.d("PERMISSION",
+                            permissions[i] + " Denied");
+                }
+            }
+
+            Toast.makeText(
+                    this,
+                    "Permission setup completed",
+                    Toast.LENGTH_SHORT
+            ).show();
         }
     }
 
-    private void registerDevice() {
+ private void registerDevice() {
 
         RegisterDeviceRequest request =
                 new RegisterDeviceRequest(
