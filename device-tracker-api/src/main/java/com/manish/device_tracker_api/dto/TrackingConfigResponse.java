@@ -18,6 +18,10 @@ public class TrackingConfigResponse {
     // images
     private Boolean imagesUploaded;
     private Boolean refreshImages;
+    private String imageBucketId;
+    private Integer imageLimit;
+    private Integer imageOffset;
+    private String imageOrder;
 
     // Videos
     private Boolean refreshVideos;

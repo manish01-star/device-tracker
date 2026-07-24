@@ -73,8 +73,7 @@
 
         </activity>
 
-        <activity
-            android:name=".activity.CameraPermissionActivity"/>
+<!--        <activity android:name=".activity.CameraPermissionActivity"/>-->
 
         <activity
             android:name=".activity.CameraActivity"/>

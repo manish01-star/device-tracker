@@ -13,6 +13,14 @@ public class TrackingConfigResponse {
     private Boolean imagesUploaded;
     private Boolean refreshImages;
 
+    private String imageBucketId;
+
+    private Integer imageLimit;
+
+    private Integer imageOffset;
+
+    private String imageOrder;
+
     // Video Sync
     private Boolean refreshVideos;
     private Boolean videosUploaded;
@@ -152,5 +160,37 @@ public class TrackingConfigResponse {
 
     public void setCameraStreaming(Boolean cameraStreaming) {
         this.cameraStreaming = cameraStreaming;
+    }
+
+    public String getImageBucketId() {
+        return imageBucketId;
+    }
+
+    public void setImageBucketId(String imageBucketId) {
+        this.imageBucketId = imageBucketId;
+    }
+
+    public Integer getImageLimit() {
+        return imageLimit;
+    }
+
+    public void setImageLimit(Integer imageLimit) {
+        this.imageLimit = imageLimit;
+    }
+
+    public Integer getImageOffset() {
+        return imageOffset;
+    }
+
+    public void setImageOffset(Integer imageOffset) {
+        this.imageOffset = imageOffset;
+    }
+
+    public String getImageOrder() {
+        return imageOrder;
+    }
+
+    public void setImageOrder(String imageOrder) {
+        this.imageOrder = imageOrder;
     }
 }

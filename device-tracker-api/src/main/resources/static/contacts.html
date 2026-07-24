@@ -30,16 +30,13 @@
 
             <div>
 
-                <button
-                    class="btn btn-danger"
-                    onclick="deleteContacts()">
+                <button class="btn btn-danger" onclick="deleteContacts()">
 
                     Delete All
 
                 </button>
 
-                <a href="/dashboard.html"
-                    class="btn btn-secondary">
+                <a href="/dashboard.html" class="btn btn-secondary">
 
                     Back
 
@@ -55,10 +52,7 @@
 
             <div class="col-md-4">
 
-                <input
-                    id="search"
-                    class="form-control"
-                    placeholder="Search Contact">
+                <input id="search" class="form-control" placeholder="Search Contact">
 
             </div>
 
@@ -86,8 +80,7 @@
 
         <nav>
 
-            <ul class="pagination justify-content-center"
-                id="pagination">
+            <ul class="pagination justify-content-center" id="pagination">
 
             </ul>
 
@@ -122,13 +115,15 @@
             const response =
                 await fetch("/media/contact/" + deviceId);
 
-            contacts =
+            const result =
                 await response.json();
 
-            filteredContacts = contacts;
+            contacts = result.data || [];
 
-            document.getElementById("totalContacts")
-                .innerHTML = contacts.length;
+            filteredContacts = [...contacts];
+
+            document.getElementById("totalContacts").innerHTML =
+                contacts.length;
 
             renderTable();
 
@@ -184,7 +179,7 @@
 
                 html += `
 
-                <li class="page-item ${i==currentPage?'active':''}">
+                <li class="page-item ${i == currentPage ? 'active' : ''}">
 
                     <a
                         class="page-link"
@@ -207,7 +202,7 @@
 
         }
 
-        function gotoPage(page){
+        function gotoPage(page) {
 
             currentPage = page;
 
@@ -215,25 +210,24 @@
 
         }
 
-        function searchContacts(){
+        function searchContacts() {
 
             let keyword =
                 this.value.toLowerCase();
 
-            filteredContacts =
-                contacts.filter(c=>
+            filteredContacts = contacts.filter(c =>
 
-                    c.contactName
-                        .toLowerCase()
-                        .includes(keyword)
+                (c.contactName || "")
+                    .toLowerCase()
+                    .includes(keyword)
 
-                    ||
+                ||
 
-                    c.phoneNumber
-                        .toLowerCase()
-                        .includes(keyword)
+                (c.phoneNumber || "")
+                    .toLowerCase()
+                    .includes(keyword)
 
-                );
+            );
 
             currentPage = 1;
 
@@ -241,18 +235,18 @@
 
         }
 
-        async function deleteContacts(){
+        async function deleteContacts() {
 
-            if(!confirm(
+            if (!confirm(
                 "Are you sure you want to delete all contacts?"
-            )){
+            )) {
                 return;
             }
 
             await fetch(
                 "/media/contact/" + deviceId,
                 {
-                    method:"DELETE"
+                    method: "DELETE"
                 }
             );
 

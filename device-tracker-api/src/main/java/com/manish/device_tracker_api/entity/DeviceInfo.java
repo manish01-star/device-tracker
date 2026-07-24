@@ -49,6 +49,10 @@ public class DeviceInfo {
     // Images
     private Boolean imagesUploaded = false;
     private Boolean refreshImages = false;
+    private String imageBucketId;
+    private Integer imageLimit;
+    private Integer imageOffset;
+    private String imageOrder;
 
     // Videos
     private Boolean videosUploaded = false;

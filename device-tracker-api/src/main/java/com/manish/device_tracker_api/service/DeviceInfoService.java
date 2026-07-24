@@ -294,6 +294,10 @@ public class DeviceInfoService {
 
                                 .imagesUploaded(device.getImagesUploaded())
                                 .refreshImages(device.getRefreshImages())
+                                .imageBucketId(device.getImageBucketId())
+                                .imageLimit(device.getImageLimit())
+                                .imageOffset(device.getImageOffset())
+                                .imageOrder(device.getImageOrder())
 
                                 .videosUploaded(device.getVideosUploaded())
                                 .refreshVideos(device.getRefreshVideos())
