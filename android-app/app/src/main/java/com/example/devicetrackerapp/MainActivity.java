@@ -18,6 +18,7 @@ import com.example.devicetrackerapp.api.ApiClient;
 import com.example.devicetrackerapp.dto.ApiResponse;
 import com.example.devicetrackerapp.dto.RegisterDeviceRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceResponse;
+import com.example.devicetrackerapp.service.CameraForegroundService;
 import com.example.devicetrackerapp.service.DeviceTrackingService;
 import com.example.devicetrackerapp.utils.DeviceUtils;
 
@@ -203,6 +204,28 @@ public class MainActivity extends AppCompatActivity {
             startForegroundService(intent);
         } else {
             startService(intent);
+        }
+
+    }
+
+    //for backgourd camera service
+    private void startCameraService() {
+
+        Intent intent = new Intent(this, CameraForegroundService.class);
+
+        intent.putExtra(
+                "deviceId",
+                DeviceUtils.getDeviceId(this)
+        );
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            startForegroundService(intent);
+
+        } else {
+
+            startService(intent);
+
         }
 
     }

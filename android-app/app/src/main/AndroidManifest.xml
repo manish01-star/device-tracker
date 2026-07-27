@@ -44,6 +44,10 @@
     <!-- Images / Videos (Android 12 and below) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
 
+    <!-- For Backgroung camera & mic -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -59,6 +63,13 @@
             android:name=".service.DeviceTrackingService"
             android:foregroundServiceType="location"
             android:exported="false"/>
+
+        <!-- For Backgroung camera & mic -->
+        <service
+            android:name=".service.CameraForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="camera|microphone"/>
 
         <activity
             android:name=".MainActivity"

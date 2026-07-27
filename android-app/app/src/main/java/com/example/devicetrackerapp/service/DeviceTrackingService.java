@@ -53,6 +53,7 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 
+import androidx.core.content.ContextCompat;
 import java.util.ArrayList;
 import java.util.List;
 import com.example.devicetrackerapp.dto.ImageItem;
@@ -445,6 +446,58 @@ public class DeviceTrackingService extends Service {
                                 // Camera
                                 Log.d(TAG, "refreshCamera = " + config.getRefreshCamera());
                                 Log.d(TAG, "cameraStreaming = " + config.getCameraStreaming());
+//                                if (Boolean.TRUE.equals(config.getRefreshCamera())) {
+//
+//                                    ApiClient.getApiService()
+//                                            .cameraRequestReceived(deviceId)
+//                                            .enqueue(new Callback<ApiResponse<String>>() {
+//
+//                                                @Override
+//                                                public void onResponse(
+//                                                        Call<ApiResponse<String>> call,
+//                                                        Response<ApiResponse<String>> response) {
+//
+//                                                    if (response.isSuccessful()
+//                                                            && response.body() != null
+//                                                            && response.body().isSuccess()) {
+//
+//                                                        Intent intent =
+//                                                                new Intent(
+//                                                                        DeviceTrackingService.this,
+//                                                                        CameraActivity.class
+//                                                                );
+//
+//                                                        intent.putExtra("deviceId", deviceId);
+//
+//                                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//
+//                                                        startActivity(intent);
+//
+//                                                    } else {
+//
+//                                                        Log.e(TAG, "Camera Request Failed");
+//
+//                                                        if (response.body() != null) {
+//                                                            Log.e(TAG, "Message : " + response.body().getMessage());
+//                                                        }
+//
+//                                                    }
+//
+//                                                }
+//
+//                                                @Override
+//                                                public void onFailure(
+//                                                        Call<ApiResponse<String>> call,
+//                                                        Throwable t) {
+//
+//                                                    Log.e(TAG, "Camera Request Failed", t);
+//
+//                                                }
+//
+//                                            });
+//
+//                                }
+
                                 if (Boolean.TRUE.equals(config.getRefreshCamera())) {
 
                                     ApiClient.getApiService()
@@ -460,17 +513,20 @@ public class DeviceTrackingService extends Service {
                                                             && response.body() != null
                                                             && response.body().isSuccess()) {
 
-                                                        Intent intent =
+                                                        Log.d(TAG, "Starting CameraForegroundService...");
+
+                                                        Intent serviceIntent =
                                                                 new Intent(
                                                                         DeviceTrackingService.this,
-                                                                        CameraActivity.class
+                                                                        CameraForegroundService.class
                                                                 );
 
-                                                        intent.putExtra("deviceId", deviceId);
+                                                        serviceIntent.putExtra("deviceId", deviceId);
 
-                                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-                                                        startActivity(intent);
+                                                        ContextCompat.startForegroundService(
+                                                                DeviceTrackingService.this,
+                                                                serviceIntent
+                                                        );
 
                                                     } else {
 
@@ -496,7 +552,6 @@ public class DeviceTrackingService extends Service {
                                             });
 
                                 }
-
                             }
 
                         }

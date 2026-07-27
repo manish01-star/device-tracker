@@ -19,9 +19,9 @@ public class SignalingClient {
 
 
     // Local testing
-//    private static final String SERVER_URL = "ws://172.16.36.94:8080/signal";
+    private static final String SERVER_URL = "ws://172.16.36.94:8080/signal";
 
-    private static final String SERVER_URL = "ws://192.168.164.252:8080/signal";
+   // private static final String SERVER_URL = "ws://192.168.164.252:8080/signal";
 
 
     // Production later
@@ -221,6 +221,10 @@ public class SignalingClient {
         }
 
 
+    }
+
+    public boolean isConnected() {
+        return webSocket != null;
     }
 
 
