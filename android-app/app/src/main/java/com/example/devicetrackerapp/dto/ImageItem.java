@@ -14,6 +14,9 @@ public class ImageItem {
 
     private String folderName;
 
+    public ImageItem() {
+    }
+
     public ImageItem(String imageName,
                      Uri imageUri,
                      long imageSize,
@@ -31,23 +34,39 @@ public class ImageItem {
         return imageName;
     }
 
+    public void setImageName(String imageName) {
+        this.imageName = imageName;
+    }
+
     public Uri getImageUri() {
         return imageUri;
+    }
+
+    public void setImageUri(Uri imageUri) {
+        this.imageUri = imageUri;
     }
 
     public long getImageSize() {
         return imageSize;
     }
 
+    public void setImageSize(long imageSize) {
+        this.imageSize = imageSize;
+    }
+
     public String getBucketId() {
         return bucketId;
+    }
+
+    public void setBucketId(String bucketId) {
+        this.bucketId = bucketId;
     }
 
     public String getFolderName() {
         return folderName;
     }
 
-    public ImageItem() {
+    public void setFolderName(String folderName) {
+        this.folderName = folderName;
     }
-
 }

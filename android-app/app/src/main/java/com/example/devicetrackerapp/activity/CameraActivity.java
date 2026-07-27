@@ -31,28 +31,10 @@ public class CameraActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_camera);
+//        setContentView(R.layout.activity_camera);
 
 
-        deviceId =
-                getIntent()
-                        .getStringExtra("deviceId");
-
-
-//        if(ContextCompat.checkSelfPermission(
-//
-//                this,
-//
-//                Manifest.permission.CAMERA
-//
-//        ) != PackageManager.PERMISSION_GRANTED){
-//
-//
-//            finish();
-//
-//            return;
-//
-//        }
+        deviceId = getIntent().getStringExtra("deviceId");
 
         initWebRTC();
 

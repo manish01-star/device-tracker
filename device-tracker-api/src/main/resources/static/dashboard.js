@@ -876,40 +876,6 @@ function openImages() {
 
 }
 
-async function getVideos() {
-
-    if (!selectedDeviceId) {
-
-        alert("Select Device First");
-
-        return;
-
-    }
-
-    if (!confirm("Fetch all videos from selected device?")) {
-
-        return;
-
-    }
-
-    const response = await fetch(
-
-        "/api/device/video/request/" + selectedDeviceId,
-
-        {
-
-            method: "POST"
-
-        }
-
-    );
-
-    const text = await response.text();
-
-    alert(text);
-
-}
-
 function viewVideos() {
 
     if (!selectedDeviceId) {
@@ -924,38 +890,6 @@ function viewVideos() {
 
     window.location.href =
         "/videos.html?deviceId=" + device.deviceId;
-
-}
-
-async function getAudios() {
-
-    if (!selectedDeviceId) {
-
-        alert("Select Device First");
-
-        return;
-
-    }
-
-    if (!confirm("Fetch all audios from selected device?")) {
-
-        return;
-
-    }
-
-    const response = await fetch(
-
-        "/media/audio/request/" + selectedDeviceId,
-
-        {
-            method: "POST"
-        }
-
-    );
-
-    const text = await response.text();
-
-    alert(text);
 
 }
 
@@ -976,53 +910,6 @@ function viewAudios() {
 
 }
 
-async function allowMic() {
-
-    if (!selectedDeviceId) {
-
-        alert("Select Device");
-
-        return;
-
-    }
-
-    let duration = prompt(
-
-        "Recording Duration (Seconds)\n\nExample : 10,30,60,120",
-
-        "30"
-
-    );
-
-    if (!duration) {
-
-        return;
-
-    }
-
-    await fetch("/media/mic/request", {
-
-        method: "POST",
-
-        headers: {
-
-            "Content-Type": "application/json"
-
-        },
-
-        body: JSON.stringify({
-
-            deviceId: selectedDeviceId,
-
-            duration: parseInt(duration)
-
-        })
-
-    });
-
-    alert("Recording Request Sent");
-
-}
 
 function openCamera() {
 

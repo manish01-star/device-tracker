@@ -1,6 +1,7 @@
 package com.manish.device_tracker_api.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.manish.device_tracker_api.entity.Image;
@@ -12,5 +13,10 @@ public interface ImageRepo extends JpaRepository<Image, Long> {
     void deleteByDeviceId(String deviceId);
 
     List<Image> findByDeviceIdOrderByImageNameAsc(String deviceId);
+
+    Optional<Image> findByDeviceIdAndImageNameAndImageSize(
+            String deviceId,
+            String imageName,
+            Long imageSize);
 
 }

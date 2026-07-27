@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -149,7 +150,8 @@ public class MediaService {
     }
 
     @Transactional
-    public void saveImages(String deviceId, List<MultipartFile> files, Boolean clearOld) throws IOException {
+    public void saveImages(String deviceId,
+            List<MultipartFile> files) throws IOException {
 
         File folder = new File("uploads");
 
@@ -157,36 +159,34 @@ public class MediaService {
             folder.mkdirs();
         }
 
-        // Delete old images only in first batch
-        if (Boolean.TRUE.equals(clearOld)) {
-
-            List<Image> oldImages = imageRepo.findByDeviceIdOrderByImageNameAsc(deviceId);
-
-            for (Image oldImage : oldImages) {
-
-                if (oldImage.getImageUrl() != null) {
-
-                    String fileName = oldImage.getImageUrl().replace("/uploads/", "");
-
-                    File oldFile = new File(folder, fileName);
-
-                    if (oldFile.exists()) {
-                        oldFile.delete();
-                    }
-                }
-            }
-
-            imageRepo.deleteByDeviceId(deviceId);
-        }
-
         List<Image> imageList = new ArrayList<>();
 
         for (MultipartFile file : files) {
 
-            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            log.info("Uploading : {}", file.getOriginalFilename());
-            log.info("Size : {}", file.getSize());
-            Path path = Paths.get(folder.getAbsolutePath(), fileName);
+            log.info("=================================");
+            log.info("OriginalFilename = {}", file.getOriginalFilename());
+            log.info("ContentType = {}", file.getContentType());
+
+            Optional<Image> existingImage = imageRepo.findByDeviceIdAndImageNameAndImageSize(
+                    deviceId,
+                    file.getOriginalFilename(),
+                    file.getSize());
+
+            if (existingImage.isPresent()) {
+
+                log.info("Duplicate Image Skip : {}",
+                        file.getOriginalFilename());
+
+                continue;
+            }
+
+            String fileName = UUID.randomUUID()
+                    + "_"
+                    + file.getOriginalFilename();
+
+            Path path = Paths.get(
+                    folder.getAbsolutePath(),
+                    fileName);
 
             Files.copy(
                     file.getInputStream(),
@@ -205,7 +205,9 @@ public class MediaService {
         }
 
         if (!imageList.isEmpty()) {
+
             imageRepo.saveAll(imageList);
+
         }
 
         DeviceInfo device = deviceInfoRepository

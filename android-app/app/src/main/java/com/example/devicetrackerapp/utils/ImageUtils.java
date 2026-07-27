@@ -5,6 +5,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.util.Log;
+
 import com.example.devicetrackerapp.dto.ImageFolderItem;
 
 import java.util.ArrayList;
@@ -268,83 +270,61 @@ public class ImageUtils {
         HashMap<String, ImageFolderItem> folderMap = new HashMap<>();
 
         String[] projection = {
-
                 MediaStore.Images.Media.BUCKET_ID,
-
                 MediaStore.Images.Media.BUCKET_DISPLAY_NAME
-
         };
 
         Cursor cursor = context.getContentResolver().query(
-
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-
                 projection,
-
                 null,
-
                 null,
-
                 null
-
         );
 
-        if (cursor != null) {
-
-            int bucketIdIndex =
-                    cursor.getColumnIndexOrThrow(
-                            MediaStore.Images.Media.BUCKET_ID);
-
-            int bucketNameIndex =
-                    cursor.getColumnIndexOrThrow(
-                            MediaStore.Images.Media.BUCKET_DISPLAY_NAME);
-
-            while (cursor.moveToNext()) {
-
-                String bucketId =
-                        cursor.getString(bucketIdIndex);
-
-                String bucketName =
-                        cursor.getString(bucketNameIndex);
-
-                if (bucketName == null)
-                    bucketName = "Unknown";
-
-                ImageFolderItem folder =
-                        folderMap.get(bucketId);
-
-                if (folder == null) {
-
-                    folder = new ImageFolderItem(
-
-                            bucketId,
-
-                            bucketName,
-
-                            1
-
-                    );
-
-                    folderMap.put(bucketId, folder);
-
-                } else {
-
-                    folder.setImageCount(
-
-                            folder.getImageCount() + 1
-
-                    );
-
-                }
-
-            }
-
-            cursor.close();
-
+        if (cursor == null) {
+            Log.d("IMAGE_FOLDER", "Cursor is NULL");
+            return new ArrayList<>();
         }
 
+        Log.d("IMAGE_FOLDER", "Total Images = " + cursor.getCount());
+
+        int bucketIdIndex =
+                cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_ID);
+
+        int bucketNameIndex =
+                cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME);
+
+        while (cursor.moveToNext()) {
+
+            String bucketId = cursor.getString(bucketIdIndex);
+
+            String bucketName = cursor.getString(bucketNameIndex);
+
+            if (bucketName == null || bucketName.trim().isEmpty()) {
+                bucketName = "Unknown";
+            }
+
+            ImageFolderItem folder = folderMap.get(bucketId);
+
+            if (folder == null) {
+
+                folder = new ImageFolderItem(
+                        bucketId,
+                        bucketName,
+                        1
+                );
+
+                folderMap.put(bucketId, folder);
+
+            } else {
+
+                folder.setImageCount(folder.getImageCount() + 1);
+            }
+        }
+
+        cursor.close();
+
         return new ArrayList<>(folderMap.values());
-
     }
-
 }

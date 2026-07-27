@@ -80,25 +80,22 @@ public class MediaController {
 
     // ======================= Image =======================
 
-    @PostMapping("/image/upload")
-    public ApiResponse<String> uploadImages(
+@PostMapping("/image/upload")
+public ApiResponse<String> uploadImages(
 
-            @RequestParam("deviceId") String deviceId,
+        @RequestParam("deviceId") String deviceId,
 
-            @RequestParam("clearOld") Boolean clearOld,
+        @RequestParam("files") List<MultipartFile> files)
 
-            @RequestParam("files") List<MultipartFile> files)
+        throws IOException {
 
-            throws IOException {
+    mediaService.saveImages(deviceId, files);
 
-        mediaService.saveImages(deviceId, files, clearOld);
-
-        return ApiResponse.<String>builder()
-                .success(true)
-                .message("Images Uploaded")
-                .data(null)
-                .build();
-    }
+    return ApiResponse.<String>builder()
+            .success(true)
+            .message("Images Uploaded")
+            .build();
+}
 
     @GetMapping("/image/{deviceId}")
     public ApiResponse<List<ImageResponse>> getImages(

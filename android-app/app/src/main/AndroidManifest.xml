@@ -76,7 +76,10 @@
 <!--        <activity android:name=".activity.CameraPermissionActivity"/>-->
 
         <activity
-            android:name=".activity.CameraActivity"/>
+            android:name=".activity.CameraActivity"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.Transparent"/>
 
     </application>
 

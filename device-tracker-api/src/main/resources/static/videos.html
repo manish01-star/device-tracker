@@ -4,13 +4,11 @@
 <head>
 
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Device Videos</title>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css" rel="stylesheet">
 
     <style>
@@ -25,23 +23,16 @@
             box-shadow:0 2px 10px rgba(0,0,0,.08);
         }
 
-        video{
-
+        .card video{
             width:100%;
             height:220px;
-
             object-fit:cover;
-
-            border-radius:10px;
-
-            background:black;
-
+            border-radius:12px 12px 0 0;
+            background:#000;
         }
 
         .page-link{
-
             cursor:pointer;
-
         }
 
     </style>
@@ -52,141 +43,159 @@
 
 <div class="container mt-4">
 
-<div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
 
-<h3>
+        <h3 class="mb-2">
+            🎥 Device Videos
+        </h3>
 
-<i class="bi bi-camera-reels-fill text-danger"></i>
+        <div class="d-flex gap-2 flex-wrap">
 
-Device Videos
+            <button
+                class="btn btn-success btn-sm"
+                onclick="getVideos()">
 
-</h3>
+                <i class="bi bi-download"></i>
 
-<div>
+                Get Videos
 
-<button class="btn btn-danger me-2"
+            </button>
 
-onclick="deleteAllVideos()">
+            <button
+                class="btn btn-danger btn-sm"
+                onclick="deleteAllVideos()">
 
-<i class="bi bi-trash"></i>
+                Delete All
 
-Delete All
+            </button>
 
-</button>
+            <a
+                href="/dashboard.html"
+                class="btn btn-secondary btn-sm">
 
-<a href="/dashboard.html"
+                Back
 
-class="btn btn-secondary">
+            </a>
 
-<i class="bi bi-arrow-left"></i>
+        </div>
 
-Back
+    </div>
 
-</a>
+    <hr>
 
-</div>
+    <div
+        id="videoGrid"
+        class="row g-4">
 
-</div>
+    </div>
 
-<hr>
+    <nav class="mt-4">
 
-<div class="row" id="videoGrid">
+        <ul
+            id="pagination"
+            class="pagination justify-content-center">
 
-</div>
+        </ul>
 
-<nav class="mt-4">
-
-<ul class="pagination justify-content-center"
-
-id="pagination">
-
-</ul>
-
-</nav>
+    </nav>
 
 </div>
 
 <script>
 
-const params=new URLSearchParams(window.location.search);
+const params = new URLSearchParams(location.search);
 
-const deviceId=params.get("deviceId");
+const deviceId = params.get("deviceId");
 
-let videos=[];
+let videos = [];
 
-let currentPage=1;
+let currentPage = 1;
 
-const pageSize=12;
+const pageSize = 12;
 
 loadVideos();
 
 async function loadVideos(){
 
-    const response=
+    try{
 
-    await fetch("/media/video/"+deviceId);
+        const response = await fetch("/media/video/" + deviceId);
 
-    videos=await response.json();
+        const data = await response.json();
 
-    renderVideos();
+
+        videos = Array.isArray(data) ? data : [];
+
+        currentPage = 1;
+
+        renderVideos();
+
+    }
+    catch(e){
+
+        console.error(e);
+
+        videos=[];
+
+        renderVideos();
+
+    }
 
 }
 
 function renderVideos(){
 
-    const start=(currentPage-1)*pageSize;
+    const start = (currentPage-1)*pageSize;
 
-    const end=start+pageSize;
+    const end = start+pageSize;
 
-    const list=videos.slice(start,end);
+    const list = videos.slice(start,end);
 
     let html="";
 
-    list.forEach(v=>{
+    list.forEach(video=>{
 
         html+=`
 
-<div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+        <div class="col-lg-3 col-md-4 col-sm-6">
 
-<div class="card">
+            <div class="card">
 
-<video controls>
+                <video controls>
 
-<source src="${v.videoUrl}"
+                    <source
+                        src="${video.videoUrl}"
+                        type="video/mp4">
 
-type="video/mp4">
+                </video>
 
-</video>
+                <div class="card-body">
 
-<div class="card-body">
+                    <div class="fw-bold text-truncate">
 
-<div class="fw-bold text-truncate">
+                        ${video.videoName}
 
-${v.videoName}
+                    </div>
 
-</div>
+                    <small class="text-muted d-block">
 
-<div class="small text-muted">
+                        ${formatSize(video.videoSize)}
 
-Size :
+                    </small>
 
-${formatSize(v.videoSize)}
+                    <small class="text-muted">
 
-</div>
+                        ${video.createdAt ?? ""}
 
-<div class="small text-muted">
+                    </small>
 
-${v.createdAt ?? ""}
+                </div>
 
-</div>
+            </div>
 
-</div>
+        </div>
 
-</div>
-
-</div>
-
-`;
+        `;
 
     });
 
@@ -198,27 +207,27 @@ ${v.createdAt ?? ""}
 
 function renderPagination(){
 
-    const totalPages=Math.ceil(videos.length/pageSize);
+    const total = Math.ceil(videos.length/pageSize);
 
     let html="";
 
-    for(let i=1;i<=totalPages;i++){
+    for(let i=1;i<=total;i++){
 
         html+=`
 
-<li class="page-item ${currentPage==i?"active":""}">
+        <li class="page-item ${currentPage==i?'active':''}">
 
-<a class="page-link"
+            <button
+                class="page-link"
+                onclick="gotoPage(${i})">
 
-onclick="gotoPage(${i})">
+                ${i}
 
-${i}
+            </button>
 
-</a>
+        </li>
 
-</li>
-
-`;
+        `;
 
     }
 
@@ -242,43 +251,85 @@ async function deleteAllVideos(){
 
     }
 
-    const response=
+    const response =
+        await fetch(
 
-    await fetch(
+            "/media/video/"+deviceId,
 
-        "/media/video/"+deviceId,
+            {
 
-        {
+                method:"DELETE"
 
-            method:"DELETE"
+            }
 
-        }
-
-    );
+        );
 
     alert(await response.text());
 
-    videos=[];
+    loadVideos();
 
-    renderVideos();
+}
+
+async function getVideos(){
+
+    if(!deviceId){
+
+        alert("Device Not Found");
+
+        return;
+
+    }
+
+    if(!confirm("Request videos from device?")){
+
+        return;
+
+    }
+
+    const response =
+        await fetch(
+
+            "/media/video/request/"+deviceId,
+
+            {
+
+                method:"POST"
+
+            }
+
+        );
+
+    alert(await response.text());
 
 }
 
 function formatSize(bytes){
 
-    if(bytes<1024)
+    if(!bytes){
+
+        return "0 B";
+
+    }
+
+    if(bytes<1024){
 
         return bytes+" B";
 
-    if(bytes<1024*1024)
+    }
 
-        return (bytes/1024).toFixed(1)+" KB";
+    if(bytes<1024*1024){
 
-    if(bytes<1024*1024*1024)
+        return (bytes/1024).toFixed(2)+" KB";
 
-        return (bytes/1024/1024).toFixed(1)+" MB";
+    }
 
-    return (bytes/1024/1024/1024).toFixed(1)+" GB";
+    if(bytes<1024*1024*1024){
+
+        return (bytes/1024/1024).toFixed(2)+" MB";
+
+    }
+
+    return (bytes/1024/1024/1024).toFixed(2)+" GB";
 
 }
 

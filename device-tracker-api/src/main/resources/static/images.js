@@ -20,6 +20,7 @@ async function loadImages() {
     const result = await response.json();
 
     console.log(result);
+    console.log(images[0]);
 
     images = result.data || [];
 

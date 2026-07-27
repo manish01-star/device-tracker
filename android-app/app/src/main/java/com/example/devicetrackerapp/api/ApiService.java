@@ -49,14 +49,15 @@ public interface ApiService {
     // ================= Images =================
 
     @Multipart
-    @POST("media/image/upload")
+    @POST("/media/image/upload")
     Call<ApiResponse<String>> uploadImages(
 
             @Part("deviceId") RequestBody deviceId,
 
-            @Part("clearOld") RequestBody clearOld,
+            @Part("bucketId") RequestBody bucketId,
 
             @Part List<MultipartBody.Part> files
+
     );
 
     @POST("media/image/folders")

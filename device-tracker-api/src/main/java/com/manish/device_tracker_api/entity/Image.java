@@ -23,5 +23,7 @@ public class Image {
 
     private Long imageSize;
 
+    private String bucketId;
+
     private LocalDateTime createdAt;
 }
