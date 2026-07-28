@@ -5,413 +5,271 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
     <title>Device Audios</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css"
+        rel="stylesheet">
+
+    <style>
+
+        body{
+            background:#f4f6fb;
+            font-size:14px;
+        }
+
+        .top-card{
+            background:#fff;
+            border-radius:14px;
+            padding:15px;
+            box-shadow:0 2px 10px rgba(0,0,0,.08);
+        }
+
+        .folder-card{
+            border:none;
+            border-radius:12px;
+            transition:.2s;
+            box-shadow:0 1px 6px rgba(0,0,0,.08);
+        }
+
+        .folder-card:hover{
+            transform:translateY(-2px);
+        }
+
+        .folder-card .card-body{
+            padding:12px;
+        }
+
+        .folder-icon{
+            font-size:28px;
+        }
+
+        .folder-name{
+            font-size:13px;
+            font-weight:600;
+            height:36px;
+            overflow:hidden;
+        }
+
+        .folder-count{
+            font-size:12px;
+        }
+
+        .folder-card .btn{
+            padding:4px 10px;
+            font-size:12px;
+        }
+
+        .audio-card{
+            border:none;
+            border-radius:12px;
+            overflow:hidden;
+            box-shadow:0 1px 6px rgba(0,0,0,.08);
+            transition:.2s;
+        }
+
+        .audio-card:hover{
+            transform:translateY(-2px);
+        }
+
+        .audio-card .card-body{
+            padding:10px;
+        }
+
+        .audio-card h6{
+            font-size:13px;
+        }
+
+        .audio-card small{
+            font-size:11px;
+        }
+
+        audio{
+            width:100%;
+            height:40px;
+        }
+
+        @media(max-width:768px){
+
+            h3{
+                font-size:20px;
+            }
+
+            h4{
+                font-size:16px;
+            }
+
+            .top-card{
+                padding:10px;
+            }
+
+        }
+
+    </style>
 
 </head>
 
-<body class="bg-light">
+<body>
 
-    <div class="container mt-4">
+<div class="container py-4">
 
-        <div class="mb-3">
+<div class="top-card">
 
-            <!-- Desktop -->
-            <div class="d-none d-md-block">
+<!-- Header -->
 
-                <!-- Row 1 -->
-                <div class="d-flex justify-content-between align-items-center mb-2">
+<div class="d-flex justify-content-between align-items-center mb-4">
 
-                    <h3 class="mb-0">
-                        🎵 Device Audios
-                    </h3>
+<h3>
 
-                    <div class="d-flex gap-2">
+<i class="bi bi-music-note-beamed"></i>
 
-                        <button class="btn btn-warning btn-sm" onclick="getAudios()">
-                            Get Audio
-                        </button>
+Device Audios
 
-                        <button class="btn btn-success btn-sm" onclick="allowMic()">
-                            Get Mic
-                        </button>
+</h3>
 
-                        <button class="btn btn-danger btn-sm" onclick="deleteAllAudios()">
-                            Delete All
-                        </button>
+<div>
 
-                        <a href="/dashboard.html" class="btn btn-secondary btn-sm">
-                            Back
-                        </a>
+<button
+class="btn btn-danger btn-sm"
+onclick="deleteAllAudios()">
 
-                    </div>
+<i class="bi bi-trash"></i>
 
-                </div>
+Delete
 
-                <!-- Row 2 -->
-                <small id="totalCount" class="text-muted">
-                    Total Audios : 0
-                </small>
+</button>
 
-            </div>
+<a
+href="/dashboard.html"
+class="btn btn-secondary btn-sm">
 
-            <!-- Mobile -->
-            <div class="d-md-none">
+<i class="bi bi-arrow-left"></i>
 
-                <!-- Row 1 -->
-                <div class="d-flex justify-content-between align-items-center mb-2">
+Back
 
-                    <h4 class="mb-0">
-                        🎵 Device Audios
-                    </h4>
+</a>
 
-                    <div class="d-flex gap-2">
+</div>
 
-                        <button class="btn btn-danger btn-sm px-3" onclick="deleteAllAudios()">
-                            Delete
-                        </button>
+</div>
 
-                        <a href="/dashboard.html" class="btn btn-secondary btn-sm px-4">
-                            Back
-                        </a>
 
-                    </div>
+<!-- Filters -->
 
+<div class="row g-2 mb-4">
 
+<div class="col-4">
 
-                </div>
+<input
+id="audioLimit"
+class="form-control form-control-sm"
+type="number"
+placeholder="Limit"
+value="20">
 
-                <!-- Row 2 -->
-                <div class="d-flex justify-content-between align-items-center">
+</div>
 
-                    <small id="totalCountMobile" class="text-muted">
-                        Total Audios : 0
-                    </small>
+<div class="col-4">
 
-                    <div class="d-flex gap-2">
+<input
+id="audioOffset"
+class="form-control form-control-sm"
+type="number"
+placeholder="Offset"
+value="0">
 
-                        <button class="btn btn-warning btn-sm px-4" onclick="getAudios()">
-                            Get Audio
-                        </button>
+</div>
 
-                        <button class="btn btn-success btn-sm px-4" onclick="allowMic()">
-                            Get Mic
-                        </button>
+<div class="col-4">
 
-                    </div>
+<select
+id="audioOrder"
+class="form-select form-select-sm">
 
-                </div>
+<option value="NEWEST">
 
-            </div>
+Newest
 
-        </div>
+</option>
 
-        <div class="row" id="audioGrid"></div>
+<option value="OLDEST">
 
-        <div class="d-flex justify-content-center mt-4">
+Oldest
 
-            <nav>
+</option>
 
-                <ul class="pagination" id="pagination"></ul>
+</select>
 
-            </nav>
+</div>
 
-        </div>
+</div>
 
-    </div>
+<hr>
 
-    <script>
+<!-- Audio Folders -->
 
-        const params = new URLSearchParams(window.location.search);
+<h4 class="mb-3">
 
-        const deviceId = params.get("deviceId");
+📁 Audio Folders
 
-        let audios = [];
+</h4>
 
-        let currentPage = 1;
+<div
+id="folderGrid"
+class="row g-3 mb-5">
 
-        const pageSize = 12;
+</div>
 
-        loadAudios();
+<hr>
 
-        async function loadAudios() {
+<!-- Uploaded Audios -->
 
-            const response = await fetch("/media/audio/" + deviceId);
+<div class="d-flex justify-content-between align-items-center mb-3">
 
-            const result = await response.json();
+<h4>
 
-            console.log(result);
+🎵 Uploaded Audios
 
-            audios = result.data || [];
+</h4>
 
-            document.getElementById("totalCount").innerHTML =
-                "Total Audios : " + audios.length;
+<button
+class="btn btn-success btn-sm"
+onclick="openMicPage()">
 
-            renderPage();
+<i class="bi bi-mic-fill"></i>
 
-        }
+Mic Recordings
 
-        function renderPage() {
+</button>
 
-            let html = "";
+</div>
 
-            const start = (currentPage - 1) * pageSize;
+<div
+id="audioGrid"
+class="row g-4">
 
-            const end = start + pageSize;
+</div>
 
-            audios.slice(start, end).forEach(audio => {
+<nav class="mt-4">
 
-                html += `
+<ul
+id="pagination"
+class="pagination justify-content-center">
 
-                <div class="col-md-4 mb-4">
+</ul>
 
-                    <div class="card shadow-sm">
+</nav>
 
-                        <div class="card-body">
+</div>
 
-                            <h6 class="text-truncate">
+</div>
 
-                                ${audio.audioName}
-
-                            </h6>
-
-                            <audio controls class="w-100">
-
-                                <source src="${audio.audioUrl}">
-
-                            </audio>
-
-                            <div class="mt-2">
-
-                                <small class="text-muted">
-
-                                    ${formatSize(audio.audioSize)}
-
-                                </small>
-
-                            </div>
-
-                            <a href="${audio.audioUrl}"
-
-                               class="btn btn-primary btn-sm mt-2"
-
-                               download>
-
-                                Download
-
-                            </a>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                `;
-
-            });
-
-            if (audios.length === 0) {
-
-                html = `
-
-                <div class="col-12">
-
-                    <div class="alert alert-warning text-center">
-
-                        No Audio Found
-
-                    </div>
-
-                </div>
-
-                `;
-
-            }
-
-            document.getElementById("audioGrid").innerHTML = html;
-
-            renderPagination();
-
-        }
-
-        function renderPagination() {
-
-            let html = "";
-
-            const totalPages = Math.ceil(audios.length / pageSize);
-
-            for (let i = 1; i <= totalPages; i++) {
-
-                html += `
-
-                <li class="page-item ${i === currentPage ? 'active' : ''}">
-
-                    <button class="page-link"
-
-                            onclick="gotoPage(${i})">
-
-                        ${i}
-
-                    </button>
-
-                </li>
-
-                `;
-
-            }
-
-            document.getElementById("pagination").innerHTML = html;
-
-        }
-
-        function gotoPage(page) {
-
-            currentPage = page;
-
-            renderPage();
-
-        }
-
-        async function deleteAllAudios() {
-
-            if (!confirm("Delete all audios ?")) {
-
-                return;
-
-            }
-
-            const response = await fetch(
-
-                "/media/audio/" + deviceId,
-
-                {
-
-                    method: "DELETE"
-
-                }
-
-            );
-
-            if (response.ok) {
-
-                alert("Audios Deleted Successfully");
-
-                loadAudios();
-
-            }
-
-            else {
-
-                alert("Delete Failed");
-
-            }
-
-        }
-
-        function formatSize(bytes) {
-
-            if (!bytes) return "0 B";
-
-            if (bytes < 1024) return bytes + " B";
-
-            if (bytes < 1024 * 1024)
-                return (bytes / 1024).toFixed(2) + " KB";
-
-            if (bytes < 1024 * 1024 * 1024)
-                return (bytes / 1024 / 1024).toFixed(2) + " MB";
-
-            return (bytes / 1024 / 1024 / 1024).toFixed(2) + " GB";
-
-        }
-
-        async function getAudios() {
-
-            if (!deviceId) {
-
-                alert("Device Not Found");
-
-                return;
-
-            }
-
-            if (!confirm("Fetch audios from this device?")) {
-
-                return;
-
-            }
-
-            const response = await fetch(
-
-                "/media/audio/request/" + deviceId,
-
-                {
-
-                    method: "POST"
-
-                }
-
-            );
-
-            const text = await response.text();
-
-            alert(text);
-
-        }
-
-        async function allowMic() {
-
-            if (!deviceId) {
-
-                alert("Device Not Found");
-
-                return;
-
-            }
-
-            let duration = prompt(
-
-                "Recording Duration (Seconds)",
-
-                "30"
-
-            );
-
-            if (!duration) {
-
-                return;
-
-            }
-
-            await fetch("/media/mic/request", {
-
-                method: "POST",
-
-                headers: {
-
-                    "Content-Type": "application/json"
-
-                },
-
-                body: JSON.stringify({
-
-                    deviceId: deviceId,
-
-                    duration: parseInt(duration)
-
-                })
-
-            });
-
-            alert("Mic Recording Request Sent");
-
-        }
-
-    </script>
+<script src="/audios.js"></script>
 
 </body>
-
 </html>

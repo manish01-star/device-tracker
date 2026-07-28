@@ -1,12 +1,14 @@
 package com.example.devicetrackerapp.api;
 
 import com.example.devicetrackerapp.dto.ApiResponse;
+import com.example.devicetrackerapp.dto.AudioFolderSyncRequest;
 import com.example.devicetrackerapp.dto.ContactPayload;
 import com.example.devicetrackerapp.dto.ImageFolderSyncRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceResponse;
 import com.example.devicetrackerapp.dto.TrackingConfigResponse;
 import com.example.devicetrackerapp.dto.UpdateLocationRequest;
+import com.example.devicetrackerapp.dto.VideoFolderSyncRequest;
 
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
@@ -70,16 +72,18 @@ public interface ApiService {
     // ================= Videos =================
 
     @Multipart
-    @POST("media/video/upload")
+    @POST("/media/video/upload")
     Call<ApiResponse<String>> uploadVideos(
-
             @Part("deviceId") RequestBody deviceId,
-
             @Part List<MultipartBody.Part> files
-
     );
 
-    // ================= Audios =================
+    @POST("/media/video/folders")
+    Call<ApiResponse<String>> syncVideoFolders(
+            @Body VideoFolderSyncRequest request
+    );
+
+// ================= Audios =================
 
     @Multipart
     @POST("media/audio/upload")
@@ -91,7 +95,15 @@ public interface ApiService {
 
     );
 
-    // ================= Mic =================
+    @POST("media/audio/folders")
+    Call<ApiResponse<String>> syncAudioFolders(
+
+            @Body AudioFolderSyncRequest request
+
+    );
+
+
+// ================= Mic =================
 
     @Multipart
     @POST("media/mic/upload")

@@ -9,50 +9,71 @@ import org.webrtc.VideoCapturer;
 
 public class VideoCapturerHelper {
 
-    public static VideoCapturer createCamera(Context context) {
+    public static VideoCapturer createCamera(Context context, String cameraType) {
 
         CameraEnumerator enumerator = new Camera2Enumerator(context);
 
         String[] devices = enumerator.getDeviceNames();
 
-        // Front Camera
-        for (String device : devices) {
-
-            if (enumerator.isFrontFacing(device)) {
-
-                CameraVideoCapturer capturer =
-                        enumerator.createCapturer(device, null);
-
-                if (capturer != null) {
-
-                    return capturer;
-
-                }
-
-            }
-
+        // Default
+        if (cameraType == null || cameraType.isEmpty()) {
+            cameraType = "BACK";
         }
 
-        // Back Camera
-        for (String device : devices) {
+        // ================= FRONT =================
+        if ("FRONT".equalsIgnoreCase(cameraType)) {
 
-            if (!enumerator.isFrontFacing(device)) {
+            for (String device : devices) {
 
-                CameraVideoCapturer capturer =
-                        enumerator.createCapturer(device, null);
+                if (enumerator.isFrontFacing(device)) {
 
-                if (capturer != null) {
+                    CameraVideoCapturer capturer =
+                            enumerator.createCapturer(device, null);
 
-                    return capturer;
-
+                    if (capturer != null) {
+                        return capturer;
+                    }
                 }
-
             }
+        }
 
+        // ================= BACK =================
+        if ("BACK".equalsIgnoreCase(cameraType)) {
+
+            for (String device : devices) {
+
+                if (!enumerator.isFrontFacing(device)) {
+
+                    CameraVideoCapturer capturer =
+                            enumerator.createCapturer(device, null);
+
+                    if (capturer != null) {
+                        return capturer;
+                    }
+                }
+            }
+        }
+
+        /*
+         * BOTH currently defaults to FRONT.
+         * We'll implement true dual camera later.
+         */
+        if ("BOTH".equalsIgnoreCase(cameraType)) {
+
+            for (String device : devices) {
+
+                if (enumerator.isFrontFacing(device)) {
+
+                    CameraVideoCapturer capturer =
+                            enumerator.createCapturer(device, null);
+
+                    if (capturer != null) {
+                        return capturer;
+                    }
+                }
+            }
         }
 
         return null;
-
     }
-
 }

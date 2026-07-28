@@ -6,11 +6,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "device_video")
+@Table(name = "device_video_folder")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Video {
+@Builder
+public class DeviceVideoFolder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,21 +19,12 @@ public class Video {
 
     private String deviceId;
 
-    private String videoName;
-
-    private String videoUrl;
-
-    private Long videoSize;
-
-    private Long duration;
-
-    // Recommended
     private String bucketId;
 
     private String folderName;
 
-    private String mimeType;
+    private Integer videoCount;
 
-    private LocalDateTime createdAt;
+    private LocalDateTime syncedAt;
 
 }

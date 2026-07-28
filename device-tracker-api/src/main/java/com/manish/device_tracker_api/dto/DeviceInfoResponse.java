@@ -41,4 +41,5 @@ public class DeviceInfoResponse {
 
     private Boolean refreshCamera;
     private Boolean cameraStreaming;
+     private String cameraType;
 }

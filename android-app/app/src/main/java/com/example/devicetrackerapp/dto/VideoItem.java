@@ -1,59 +1,52 @@
 package com.example.devicetrackerapp.dto;
 
+import android.net.Uri;
+
 public class VideoItem {
 
-    private String videoName;
-
-    private String videoPath;
-
-    private long videoSize;
-
+    private String name;
+    private Uri uri;
+    private long size;
+    private String bucketId;
+    private String bucketName;
     private long duration;
 
-    public VideoItem() {
-    }
-
-    public VideoItem(String videoName,
-                     String videoPath,
-                     long videoSize,
+    public VideoItem(String name,
+                     Uri uri,
+                     long size,
+                     String bucketId,
+                     String bucketName,
                      long duration) {
 
-        this.videoName = videoName;
-        this.videoPath = videoPath;
-        this.videoSize = videoSize;
+        this.name = name;
+        this.uri = uri;
+        this.size = size;
+        this.bucketId = bucketId;
+        this.bucketName = bucketName;
         this.duration = duration;
     }
 
-    public String getVideoName() {
-        return videoName;
+    public String getName() {
+        return name;
     }
 
-    public void setVideoName(String videoName) {
-        this.videoName = videoName;
+    public Uri getUri() {
+        return uri;
     }
 
-    public String getVideoPath() {
-        return videoPath;
+    public long getSize() {
+        return size;
     }
 
-    public void setVideoPath(String videoPath) {
-        this.videoPath = videoPath;
+    public String getBucketId() {
+        return bucketId;
     }
 
-    public long getVideoSize() {
-        return videoSize;
-    }
-
-    public void setVideoSize(long videoSize) {
-        this.videoSize = videoSize;
+    public String getBucketName() {
+        return bucketName;
     }
 
     public long getDuration() {
         return duration;
     }
-
-    public void setDuration(long duration) {
-        this.duration = duration;
-    }
-
 }

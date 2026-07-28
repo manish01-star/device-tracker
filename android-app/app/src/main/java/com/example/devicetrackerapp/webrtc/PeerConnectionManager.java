@@ -147,9 +147,13 @@ public class PeerConnectionManager {
 
     }
 
-    public void startLocalCamera() {
+    public void startLocalCamera(String cameraType) {
 
-        videoCapturer = VideoCapturerHelper.createCamera(context);
+        if (videoCapturer != null) {
+            stopCapture();
+        }
+
+        videoCapturer = VideoCapturerHelper.createCamera(context, cameraType);
 
         if (videoCapturer == null) {
 
@@ -167,9 +171,7 @@ public class PeerConnectionManager {
 
                 );
 
-        videoSource =
-
-                factory.createVideoSource(false);
+        videoSource = factory.createVideoSource(false);
 
         videoCapturer.initialize(
 
@@ -181,43 +183,13 @@ public class PeerConnectionManager {
 
         );
 
-        videoCapturer.startCapture(
+        videoCapturer.startCapture(640, 480, 30);
 
-                640,
+        localVideoTrack = factory.createVideoTrack("VIDEO_TRACK", videoSource);
 
-                480,
+        audioSource = factory.createAudioSource(new MediaConstraints());
 
-                30
-
-        );
-
-        localVideoTrack =
-
-                factory.createVideoTrack(
-
-                        "VIDEO_TRACK",
-
-                        videoSource
-
-                );
-
-        audioSource =
-
-                factory.createAudioSource(
-
-                        new MediaConstraints()
-
-                );
-
-        localAudioTrack =
-
-                factory.createAudioTrack(
-
-                        "AUDIO_TRACK",
-
-                        audioSource
-
-                );
+        localAudioTrack = factory.createAudioTrack("AUDIO_TRACK", audioSource);
 
         if (peerConnection != null) {
 
@@ -244,62 +216,45 @@ public class PeerConnectionManager {
     public void stopCapture() {
 
         try {
-            if(surfaceTextureHelper!=null){
-
-                surfaceTextureHelper.dispose();
-
-            }
 
             if (videoCapturer != null) {
-
                 videoCapturer.stopCapture();
-
                 videoCapturer.dispose();
-
                 videoCapturer = null;
-
             }
 
-        }
+            if (surfaceTextureHelper != null) {
+                surfaceTextureHelper.dispose();
+                surfaceTextureHelper = null;
+            }
 
-        catch (Exception e) {
-
+        } catch (Exception e) {
             e.printStackTrace();
-
         }
-
     }
-
     public void release() {
 
         stopCapture();
 
         if (peerConnection != null) {
-
             peerConnection.close();
             peerConnection.dispose();
-            peerConnection=null;
-
+            peerConnection = null;
         }
 
         if (videoSource != null) {
-
             videoSource.dispose();
-
+            videoSource = null;
         }
 
         if (audioSource != null) {
-
             audioSource.dispose();
-
+            audioSource = null;
         }
 
-        if(surfaceTextureHelper != null){
-            surfaceTextureHelper.dispose();
-        }
-
+        localVideoTrack = null;
+        localAudioTrack = null;
     }
-
     public void createOffer() {
 
         MediaConstraints constraints =

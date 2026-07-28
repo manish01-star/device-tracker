@@ -1,19 +1,14 @@
-package com.manish.device_tracker_api.entity;
+package com.manish.device_tracker_api.dto;
 
-import jakarta.persistence.*;
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "device_video")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class Video {
+@Builder
+public class VideoResponse {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String deviceId;
@@ -24,9 +19,8 @@ public class Video {
 
     private Long videoSize;
 
-    private Long duration;
+    private Long duration;      // seconds or milliseconds
 
-    // Recommended
     private String bucketId;
 
     private String folderName;
@@ -34,5 +28,4 @@ public class Video {
     private String mimeType;
 
     private LocalDateTime createdAt;
-
 }

@@ -48,6 +48,7 @@ public class DeviceInfoService {
                         deviceInfo.setMicDuration(30);
                         deviceInfo.setRefreshCamera(false);
                         deviceInfo.setCameraStreaming(false);
+                        deviceInfo.setCameraType("FRONT");
                 }
 
                 deviceInfo.setUsername(request.getUsername());
@@ -65,60 +66,6 @@ public class DeviceInfoService {
                                 .appVersion(savedDevice.getAppVersion())
                                 .build();
         }
-
-        // public void updateDevice(UpdateDeviceRequest request) {
-
-        // DeviceInfo deviceInfo =
-        // deviceInfoRepository.findByDeviceId(request.getDeviceId())
-        // .orElseThrow(() -> new RuntimeException("Device not found"));
-
-        // // Location Update
-        // if (request.getLatitude() != null && request.getLongitude() != null) {
-
-        // Double oldLat = deviceInfo.getLatitude();
-        // Double oldLng = deviceInfo.getLongitude();
-
-        // deviceInfo.setLatitude(request.getLatitude());
-        // deviceInfo.setLongitude(request.getLongitude());
-
-        // boolean locationChanged = false;
-
-        // if (oldLat == null || oldLng == null) {
-
-        // locationChanged = true;
-
-        // } else {
-
-        // double latDiff = Math.abs(oldLat - request.getLatitude());
-        // double lngDiff = Math.abs(oldLng - request.getLongitude());
-
-        // if (latDiff > 0.0005 || lngDiff > 0.0005) {
-        // locationChanged = true;
-        // }
-        // }
-
-        // if (locationChanged) {
-
-        // String address = geoCodingService.getAddress(
-        // request.getLatitude(),
-        // request.getLongitude());
-
-        // if (address != null && !address.isBlank()) {
-        // deviceInfo.setAddress(address);
-        // }
-        // }
-        // }
-
-        // // Battery
-        // if (request.getBattery() != null) {
-        // deviceInfo.setBattery(request.getBattery());
-        // }
-
-        // // Last Online
-        // deviceInfo.setLastOnline(LocalDateTime.now());
-
-        // deviceInfoRepository.save(deviceInfo);
-        // }
 
         public void updateDevice(UpdateDeviceRequest request) {
 
@@ -213,6 +160,7 @@ public class DeviceInfoService {
                                 .audiosUploaded(device.getAudiosUploaded())
                                 .refreshAudios(device.getRefreshAudios())
                                 .lastOnline(device.getLastOnline())
+                                .cameraType(device.getCameraType())
                                 .build();
         }
 
@@ -242,6 +190,7 @@ public class DeviceInfoService {
                                                 .audiosUploaded(device.getAudiosUploaded())
                                                 .refreshAudios(device.getRefreshAudios())
                                                 .lastOnline(device.getLastOnline())
+                                                .cameraType(device.getCameraType())
                                                 .build())
                                 .toList();
         }
@@ -311,6 +260,7 @@ public class DeviceInfoService {
 
                                 .refreshCamera(device.getRefreshCamera())
                                 .cameraStreaming(device.getCameraStreaming())
+                                .cameraType(device.getCameraType())
 
                                 .build();
 

@@ -57,20 +57,29 @@ public class DeviceInfo {
     // Videos
     private Boolean videosUploaded = false;
     private Boolean refreshVideos = false;
+    private String videoBucketId;
+    private Integer videoLimit;
+    private Integer videoOffset;
+    private String videoOrder;
 
     // Audio
     private Boolean audiosUploaded = false;
     private Boolean refreshAudios = false;
+    private String audioBucketId;
+    private Integer audioLimit;
+    private Integer audioOffset;
+    private String audioOrder;
 
     // Mic Recording
-    private Boolean micUploaded;
-    private Boolean refreshMic;
+    private Boolean micUploaded = false;
+    private Boolean refreshMic = false;
     private Integer micDuration;
 
     // Live Camera
     private Boolean refreshCamera;
     private Boolean cameraStreaming;
     private String cameraSessionId;
+    private String cameraType;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

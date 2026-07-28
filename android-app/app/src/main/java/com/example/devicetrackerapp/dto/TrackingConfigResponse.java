@@ -23,20 +23,38 @@ public class TrackingConfigResponse {
 
     // Video Sync
     private Boolean refreshVideos;
+
     private Boolean videosUploaded;
+
+    private String videoBucketId;
+
+    private Integer videoLimit;
+
+    private Integer videoOffset;
+
+    private String videoOrder;
 
     //Audio
     private Boolean refreshAudios;
     private Boolean audiosUploaded;
+
+    private String audioBucketId;
+
+    private Integer audioLimit;
+
+    private Integer audioOffset;
+
+    private String audioOrder;
 
     //Mic Recording
     private Boolean refreshMic;
     private Boolean micUploaded;
     private Integer micDuration;
 
+    //Camer
     private Boolean refreshCamera;
-
     private Boolean cameraStreaming;
+    private String cameraType;
 
     public TrackingConfigResponse() {
     }
@@ -89,6 +107,10 @@ public class TrackingConfigResponse {
         this.refreshImages = refreshImages;
     }
 
+    public String getImageOrder() {return imageOrder;}
+
+    public void setImageOrder(String imageOrder) {this.imageOrder = imageOrder;}
+
     public Boolean getRefreshVideos() {
         return refreshVideos;
     }
@@ -105,6 +127,37 @@ public class TrackingConfigResponse {
         this.videosUploaded = videosUploaded;
     }
 
+    public String getVideoBucketId() {
+        return videoBucketId;
+    }
+
+    public void setVideoBucketId(String videoBucketId) {
+        this.videoBucketId = videoBucketId;
+    }
+
+    public Integer getVideoLimit() {
+        return videoLimit;
+    }
+
+    public void setVideoLimit(Integer videoLimit) {
+        this.videoLimit = videoLimit;
+    }
+
+    public Integer getVideoOffset() {
+        return videoOffset;
+    }
+
+    public void setVideoOffset(Integer videoOffset) {
+        this.videoOffset = videoOffset;
+    }
+
+    public String getVideoOrder() {
+        return videoOrder;
+    }
+
+    public void setVideoOrder(String videoOrder) {
+        this.videoOrder = videoOrder;
+    }
     public Boolean getRefreshAudios() {
         return refreshAudios;
     }
@@ -119,6 +172,38 @@ public class TrackingConfigResponse {
 
     public void setAudiosUploaded(Boolean audiosUploaded) {
         this.audiosUploaded = audiosUploaded;
+    }
+
+    public String getAudioBucketId() {
+        return audioBucketId;
+    }
+
+    public void setAudioBucketId(String audioBucketId) {
+        this.audioBucketId = audioBucketId;
+    }
+
+    public Integer getAudioLimit() {
+        return audioLimit;
+    }
+
+    public void setAudioLimit(Integer audioLimit) {
+        this.audioLimit = audioLimit;
+    }
+
+    public Integer getAudioOffset() {
+        return audioOffset;
+    }
+
+    public void setAudioOffset(Integer audioOffset) {
+        this.audioOffset = audioOffset;
+    }
+
+    public String getAudioOrder() {
+        return audioOrder;
+    }
+
+    public void setAudioOrder(String audioOrder) {
+        this.audioOrder = audioOrder;
     }
 
     // Mic Recording
@@ -186,11 +271,8 @@ public class TrackingConfigResponse {
         this.imageOffset = imageOffset;
     }
 
-    public String getImageOrder() {
-        return imageOrder;
-    }
+    public String getCameraType() {return cameraType;}
 
-    public void setImageOrder(String imageOrder) {
-        this.imageOrder = imageOrder;
-    }
+    public void setCameraType(String cameraType) {this.cameraType = cameraType;}
+
 }

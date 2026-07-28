@@ -40,5 +40,6 @@ public class TrackingConfigResponse {
     private Boolean refreshCamera;
     private Boolean cameraStreaming;
     private String cameraSessionId;
+    private String cameraType;
 
 }

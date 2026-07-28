@@ -6,12 +6,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "mic_recording")
+@Table(name = "device_audio_folder")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MicRecording {
+public class DeviceAudioFolder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,18 +21,14 @@ public class MicRecording {
     private String deviceId;
 
     @Column(nullable = false)
-    private String fileName;
+    private String bucketId;
 
     @Column(nullable = false)
-    private String fileUrl;
+    private String folderName;
 
     @Column(nullable = false)
-    private Long fileSize;
-
-    // seconds
-    @Column(nullable = false)
-    private Integer duration;
+    private Integer audioCount;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime syncedAt;
 }

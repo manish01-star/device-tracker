@@ -24,6 +24,7 @@ public class CameraForegroundService extends Service {
     private PeerConnectionManager peerConnectionManager;
 
     private String deviceId;
+    private String cameraType;
 
     private static final String CHANNEL_ID = "camera_service_channel";
 
@@ -90,6 +91,7 @@ public class CameraForegroundService extends Service {
         );
 
         deviceId = intent.getStringExtra("deviceId");
+        cameraType = intent.getStringExtra("cameraType");
         if (deviceId == null) {
             stopSelf();
             return START_NOT_STICKY;
@@ -106,7 +108,7 @@ public class CameraForegroundService extends Service {
 
                 peerConnectionManager.createPeerConnection();
 
-                peerConnectionManager.startLocalCamera();
+                peerConnectionManager.startLocalCamera(cameraType);
 
                 peerConnectionManager.createOffer();
             }

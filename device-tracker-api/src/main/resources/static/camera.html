@@ -7,40 +7,57 @@
 
     <title>Live Camera</title>
 
-    <!-- <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/webrtc-adapter@9.0.3/out/adapter.js"></script>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
 </head>
 
-<body>
+<body class="container py-4">
 
-    <h2>Live Camera</h2>
+    <h2 class="mb-4">Live Camera</h2>
 
-    <button onclick="startCamera()">
-        Start Live
-    </button>
+    <div class="d-flex align-items-center gap-3 mb-4">
 
-    <button onclick="stopCamera()">
-        Stop
-    </button>
+        <select id="cameraType" class="form-select" style="width:220px">
 
-    <a href="/dashboard.html" class="btn btn-secondary">
-        Back
-    </a>
+            <option value="FRONT">
+                Front Camera
+            </option>
 
-    <br><br>
+            <option value="BACK">
+                Back Camera
+            </option>
 
-    <video id="remoteVideo" autoplay playsinline controls style="width:900px;height:600px;background:black">
+            <option value="BOTH">
+                Both Cameras
+            </option>
+
+        </select>
+
+        <button class="btn btn-success" onclick="startCamera()">
+            Start Live
+        </button>
+
+        <button class="btn btn-danger" onclick="stopCamera()">
+            Stop
+        </button>
+
+        <a href="/dashboard.html" class="btn btn-secondary">
+            Back
+        </a>
+
+    </div>
+
+    <video id="remoteVideo" autoplay playsinline controls
+        style="width:100%;max-width:900px;height:600px;background:black;border-radius:10px;">
     </video>
 
     <script>
 
-        const params =
-            new URLSearchParams(location.search);
+        const params = new URLSearchParams(location.search);
 
-        const deviceId =
-            params.get("deviceId");
+        const deviceId = params.get("deviceId");
 
         let peerConnection = null;
 
@@ -56,51 +73,32 @@
 
         };
 
-        const socket =
+        const socket = new WebSocket(
+            "ws://" + location.host + "/signal?type=browser&deviceId=" + deviceId
+        );
 
-            new WebSocket(
-
-                "ws://"
-
-                +
-
-                location.host
-
-                +
-
-                "/signal?type=browser&deviceId="
-
-                +
-
-                deviceId
-
-            );
-
-
-        socket.onopen = function () {
+        socket.onopen = () => {
 
             console.log("Browser Connected");
 
         };
 
-
-        socket.onclose = function () {
+        socket.onclose = () => {
 
             console.log("Socket Closed");
 
         };
 
-
-        socket.onerror = function (e) {
+        socket.onerror = (e) => {
 
             console.log(e);
 
         };
 
-
-        socket.onmessage = async function (event) {
+        socket.onmessage = async (event) => {
 
             console.log("RAW =", event.data);
+
             const message = JSON.parse(event.data);
 
             console.log("PARSED =", message);
@@ -121,17 +119,11 @@
 
                             new RTCIceCandidate({
 
-                                candidate:
+                                candidate: message.candidate,
 
-                                    message.candidate,
+                                sdpMid: message.sdpMid,
 
-                                sdpMid:
-
-                                    message.sdpMid,
-
-                                sdpMLineIndex:
-
-                                    message.sdpMLineIndex
+                                sdpMLineIndex: message.sdpMLineIndex
 
                             })
 
@@ -151,27 +143,22 @@
 
         };
 
-
-
         async function receiveOffer(message) {
+
             console.log("Offer Received");
 
             stopPeer();
 
-            peerConnection =
-
-                new RTCPeerConnection(configuration);
-
+            peerConnection = new RTCPeerConnection(configuration);
 
             peerConnection.ontrack = function (event) {
 
-                console.log("TRACK RECEIVED");
-                console.log(event);
+                console.log("Track Received");
 
-                document.getElementById("remoteVideo").srcObject = event.streams[0];
+                document.getElementById("remoteVideo").srcObject =
+                    event.streams[0];
 
             };
-
 
             peerConnection.onicecandidate = function (event) {
 
@@ -181,25 +168,15 @@
 
                         JSON.stringify({
 
-                            deviceId:
+                            deviceId: deviceId,
 
-                                deviceId,
+                            type: "candidate",
 
-                            type:
+                            candidate: event.candidate.candidate,
 
-                                "candidate",
+                            sdpMid: event.candidate.sdpMid,
 
-                            candidate:
-
-                                event.candidate.candidate,
-
-                            sdpMid:
-
-                                event.candidate.sdpMid,
-
-                            sdpMLineIndex:
-
-                                event.candidate.sdpMLineIndex
+                            sdpMLineIndex: event.candidate.sdpMLineIndex
 
                         })
 
@@ -209,17 +186,14 @@
 
             };
 
-
             peerConnection.onconnectionstatechange = function () {
 
                 console.log(
-
+                    "Connection State : ",
                     peerConnection.connectionState
-
                 );
 
             };
-
 
             await peerConnection.setRemoteDescription(
 
@@ -233,30 +207,20 @@
 
             );
 
-
             const answer =
-
                 await peerConnection.createAnswer();
 
-
             await peerConnection.setLocalDescription(answer);
-
 
             socket.send(
 
                 JSON.stringify({
 
-                    deviceId:
+                    deviceId: deviceId,
 
-                        deviceId,
+                    type: "answer",
 
-                    type:
-
-                        "answer",
-
-                    sdp:
-
-                        answer.sdp
+                    sdp: answer.sdp
 
                 })
 
@@ -264,39 +228,48 @@
 
         }
 
-
-
         function startCamera() {
 
-            fetch(
+            stopPeer();
 
-                "/media/camera/request/"
+            const cameraType = document.getElementById("cameraType").value;
 
-                +
+            fetch("/media/camera/request", {
 
-                deviceId,
+                method: "POST",
 
-                {
+                headers: {
+                    "Content-Type": "application/json"
+                },
 
-                    method: "POST"
+                body: JSON.stringify({
 
-                }
+                    deviceId: deviceId,
 
-            );
+                    cameraType: cameraType
+
+                })
+
+            })
+                .then(response => response.json())
+                .then(data => {
+
+                    console.log("Camera Request Sent", data);
+
+                })
+                .catch(err => {
+
+                    console.error(err);
+
+                });
 
         }
-
-
 
         function stopCamera() {
 
             fetch(
 
-                "/media/camera/stopped/"
-
-                +
-
-                deviceId,
+                "/media/camera/stopped/" + deviceId,
 
                 {
 
@@ -310,8 +283,6 @@
 
         }
 
-
-
         function stopPeer() {
 
             if (peerConnection) {
@@ -322,13 +293,9 @@
 
             }
 
-            document
-                .getElementById("remoteVideo")
-                .srcObject = null;
+            document.getElementById("remoteVideo").srcObject = null;
 
         }
-
-
 
         window.onbeforeunload = function () {
 

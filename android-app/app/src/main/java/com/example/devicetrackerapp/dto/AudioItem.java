@@ -1,58 +1,58 @@
 package com.example.devicetrackerapp.dto;
 
+import android.net.Uri;
+
 public class AudioItem {
 
-    private String audioName;
+    private String name;
 
-    private String audioPath;
+    private Uri uri;
 
-    private long audioSize;
+    private long size;
+
+    private String bucketId;
+
+    private String bucketName;
 
     private long duration;
 
-    public AudioItem() {
-    }
+    public AudioItem(
+            String name,
+            Uri uri,
+            long size,
+            String bucketId,
+            String bucketName,
+            long duration) {
 
-    public AudioItem(String audioName,
-                     String audioPath,
-                     long audioSize,
-                     long duration) {
-
-        this.audioName = audioName;
-        this.audioPath = audioPath;
-        this.audioSize = audioSize;
+        this.name = name;
+        this.uri = uri;
+        this.size = size;
+        this.bucketId = bucketId;
+        this.bucketName = bucketName;
         this.duration = duration;
     }
 
-    public String getAudioName() {
-        return audioName;
+    public String getName() {
+        return name;
     }
 
-    public void setAudioName(String audioName) {
-        this.audioName = audioName;
+    public Uri getUri() {
+        return uri;
     }
 
-    public String getAudioPath() {
-        return audioPath;
+    public long getSize() {
+        return size;
     }
 
-    public void setAudioPath(String audioPath) {
-        this.audioPath = audioPath;
+    public String getBucketId() {
+        return bucketId;
     }
 
-    public long getAudioSize() {
-        return audioSize;
-    }
-
-    public void setAudioSize(long audioSize) {
-        this.audioSize = audioSize;
+    public String getBucketName() {
+        return bucketName;
     }
 
     public long getDuration() {
         return duration;
-    }
-
-    public void setDuration(long duration) {
-        this.duration = duration;
     }
 }
