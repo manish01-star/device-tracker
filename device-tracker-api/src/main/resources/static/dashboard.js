@@ -931,4 +931,29 @@ function openCamera() {
         "/camera.html?deviceId=" + device.deviceId;
 }
 
+function openScreen() {
+
+    if (selectedDeviceId == null) {
+
+        alert("Select Device");
+        return;
+
+    }
+
+    const device = devices.find(d => d.id === selectedDeviceId);
+
+    if (!device) {
+
+        alert("Device not found");
+        return;
+
+    }
+
+    console.log(device);
+
+    location.href =
+        "/screen.html?deviceId=" + device.deviceId;
+
+}
+
 window.onload = initMap;

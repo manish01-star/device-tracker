@@ -2,6 +2,8 @@ package com.manish.device_tracker_api.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Table(name = "device_info")
@@ -80,6 +82,30 @@ public class DeviceInfo {
     private Boolean cameraStreaming;
     private String cameraSessionId;
     private String cameraType;
+
+    // Live Screen
+    private Boolean refreshScreen = false;
+    private Boolean screenStreaming = false;
+    private String screenStatus = "IDLE";
+    private String screenSessionId;
+    private LocalDateTime screenStartedAt;
+    private LocalDateTime screenStoppedAt;
+
+    // Call History
+    private Boolean refreshCallHistory = false;
+
+    // Sms History
+    @Column(name = "refresh_sms")
+    private Boolean refreshSms = false;
+
+    @Column(name = "sms_uploaded")
+    private Boolean smsUploaded = false;
+
+    @Column(name = "sms_from_date")
+    private LocalDate smsFromDate;
+
+    @Column(name = "sms_to_date")
+    private LocalDate smsToDate;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

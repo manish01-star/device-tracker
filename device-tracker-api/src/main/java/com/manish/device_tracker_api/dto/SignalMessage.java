@@ -1,5 +1,6 @@
 package com.manish.device_tracker_api.dto;
 
+import com.manish.device_tracker_api.entity.RemoteAction;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,7 +14,7 @@ public class SignalMessage {
 
     private String deviceId;
 
-    // offer | answer | candidate
+    // offer | answer | candidate | call_history_request
     private String type;
 
     // SDP
@@ -26,4 +27,15 @@ public class SignalMessage {
 
     private Integer sdpMLineIndex;
 
+    // Existing remote action
+    private RemoteAction action;
+
+    // New: Call History Request
+    private CallHistoryRequest callHistoryRequest;
+
+    private Integer screenWidth;
+
+    private Integer screenHeight;
+
+    private Integer rotation;
 }

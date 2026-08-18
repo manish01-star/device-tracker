@@ -1,5 +1,8 @@
 package com.example.devicetrackerapp.webrtc;
 
+import com.example.devicetrackerapp.model.RemoteAction;
+
+import com.example.devicetrackerapp.dto.CallHistoryRequest;
 public class SignalMessage {
 
     private String type;
@@ -14,7 +17,29 @@ public class SignalMessage {
 
     private Integer sdpMLineIndex;
 
+    private Integer screenWidth;
+
+    private Integer screenHeight;
+
+    private Integer rotation;
+
+
+    // NEW
+    private RemoteAction action;
+
+    private CallHistoryRequest callHistoryRequest;
+
     public SignalMessage() {
+    }
+
+    public CallHistoryRequest getCallHistoryRequest() {
+        return callHistoryRequest;
+    }
+
+    public void setCallHistoryRequest(
+            CallHistoryRequest callHistoryRequest
+    ) {
+        this.callHistoryRequest = callHistoryRequest;
     }
 
     public String getType() {
@@ -25,6 +50,7 @@ public class SignalMessage {
         this.type = type;
     }
 
+
     public String getDeviceId() {
         return deviceId;
     }
@@ -32,6 +58,7 @@ public class SignalMessage {
     public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
     }
+
 
     public String getSdp() {
         return sdp;
@@ -41,6 +68,7 @@ public class SignalMessage {
         this.sdp = sdp;
     }
 
+
     public String getCandidate() {
         return candidate;
     }
@@ -48,6 +76,7 @@ public class SignalMessage {
     public void setCandidate(String candidate) {
         this.candidate = candidate;
     }
+
 
     public String getSdpMid() {
         return sdpMid;
@@ -57,12 +86,49 @@ public class SignalMessage {
         this.sdpMid = sdpMid;
     }
 
+
     public Integer getSdpMLineIndex() {
         return sdpMLineIndex;
     }
 
     public void setSdpMLineIndex(Integer sdpMLineIndex) {
         this.sdpMLineIndex = sdpMLineIndex;
+    }
+
+
+    // NEW
+
+    public RemoteAction getAction() {
+        return action;
+    }
+
+
+    public void setAction(RemoteAction action) {
+        this.action = action;
+    }
+
+    public Integer getScreenWidth() {
+        return screenWidth;
+    }
+
+    public void setScreenWidth(Integer screenWidth) {
+        this.screenWidth = screenWidth;
+    }
+
+    public Integer getScreenHeight() {
+        return screenHeight;
+    }
+
+    public void setScreenHeight(Integer screenHeight) {
+        this.screenHeight = screenHeight;
+    }
+
+    public Integer getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(Integer rotation) {
+        this.rotation = rotation;
     }
 
 }

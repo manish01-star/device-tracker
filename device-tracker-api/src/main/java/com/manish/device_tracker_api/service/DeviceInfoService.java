@@ -49,6 +49,10 @@ public class DeviceInfoService {
                         deviceInfo.setRefreshCamera(false);
                         deviceInfo.setCameraStreaming(false);
                         deviceInfo.setCameraType("FRONT");
+                        deviceInfo.setRefreshScreen(false);
+                        deviceInfo.setScreenStreaming(false);
+                        deviceInfo.setScreenStatus("IDLE");
+                        deviceInfo.setScreenSessionId(null);
                 }
 
                 deviceInfo.setUsername(request.getUsername());
@@ -261,6 +265,11 @@ public class DeviceInfoService {
                                 .refreshCamera(device.getRefreshCamera())
                                 .cameraStreaming(device.getCameraStreaming())
                                 .cameraType(device.getCameraType())
+
+                                .refreshScreen(device.getRefreshScreen())
+                                .screenStreaming(device.getScreenStreaming())
+                                .screenStatus(device.getScreenStatus())
+                                .screenSessionId(device.getScreenSessionId())
 
                                 .build();
 

@@ -1,7 +1,8 @@
-package com.example.devicetrackerapp.webrtc;
+package com.example.devicetrackerapp.service;
 
 import android.util.Log;
 
+import com.example.devicetrackerapp.webrtc.SignalMessage;
 import com.google.gson.Gson;
 
 import okhttp3.OkHttpClient;
@@ -10,32 +11,27 @@ import okhttp3.Response;
 import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 
-public class SignalingClient {
+public class CallHistorySignalingClient {
 
-    private static final String TAG = "SIGNAL";
-
-    // Local Testing
-    // private static final String SERVER_URL = "ws://172.16.36.94:8080/signal";
+    private static final String TAG =
+            "CALL_HISTORY_SOCKET";
 
     private static final String SERVER_URL =
             "ws://192.168.164.252:8080/signal";
 
-    // Production
-    // private static final String SERVER_URL = "wss://your-domain.com/signal";
+    private final OkHttpClient client =
+            new OkHttpClient();
 
-    private final OkHttpClient client = new OkHttpClient();
+    private final Gson gson =
+            new Gson();
+
+    private final String deviceId;
+
+    private final Listener listener;
 
     private WebSocket webSocket;
 
     private volatile boolean connected = false;
-
-    private final Gson gson = new Gson();
-
-    private final String deviceId;
-
-    private final String stream;
-
-    private final Listener listener;
 
     public interface Listener {
 
@@ -43,20 +39,18 @@ public class SignalingClient {
 
         void onDisconnected();
 
-        void onMessage(SignalMessage message);
-
+        void onMessage(
+                SignalMessage message
+        );
     }
 
-    public SignalingClient(
+    public CallHistorySignalingClient(
             String deviceId,
-            String stream,
             Listener listener
     ) {
 
         this.deviceId = deviceId;
-        this.stream = stream;
         this.listener = listener;
-
     }
 
     public synchronized void connect() {
@@ -68,10 +62,12 @@ public class SignalingClient {
                         + "?deviceId="
                         + deviceId
                         + "&role=device"
-                        + "&stream="
-                        + stream;
+                        + "&stream=call_history";
 
-        Log.d(TAG, "Connecting : " + url);
+        Log.d(
+                TAG,
+                "Connecting = " + url
+        );
 
         Request request =
                 new Request.Builder()
@@ -91,12 +87,15 @@ public class SignalingClient {
 
                                 connected = true;
 
-                                Log.d(TAG, "Connected");
+                                Log.d(
+                                        TAG,
+                                        "Socket Connected"
+                                );
 
                                 if (listener != null) {
+
                                     listener.onConnected();
                                 }
-
                             }
 
                             @Override
@@ -105,7 +104,11 @@ public class SignalingClient {
                                     String text
                             ) {
 
-                                Log.d(TAG, "RECEIVE -> " + text);
+                                Log.d(
+                                        TAG,
+                                        "RECEIVE -> "
+                                                + text
+                                );
 
                                 try {
 
@@ -115,8 +118,12 @@ public class SignalingClient {
                                                     SignalMessage.class
                                             );
 
-                                    if (listener != null && message != null) {
-                                        listener.onMessage(message);
+                                    if (listener != null
+                                            && message != null) {
+
+                                        listener.onMessage(
+                                                message
+                                        );
                                     }
 
                                 } catch (Exception e) {
@@ -126,9 +133,7 @@ public class SignalingClient {
                                             "Invalid message",
                                             e
                                     );
-
                                 }
-
                             }
 
                             @Override
@@ -140,8 +145,10 @@ public class SignalingClient {
 
                                 connected = false;
 
-                                webSocket.close(code, reason);
-
+                                webSocket.close(
+                                        code,
+                                        reason
+                                );
                             }
 
                             @Override
@@ -155,13 +162,14 @@ public class SignalingClient {
 
                                 Log.d(
                                         TAG,
-                                        "Disconnected : " + reason
+                                        "Socket Closed: "
+                                                + reason
                                 );
 
                                 if (listener != null) {
+
                                     listener.onDisconnected();
                                 }
-
                             }
 
                             @Override
@@ -175,53 +183,17 @@ public class SignalingClient {
 
                                 Log.e(
                                         TAG,
-                                        "Socket Error",
+                                        "Socket Failure",
                                         t
                                 );
 
                                 if (listener != null) {
+
                                     listener.onDisconnected();
                                 }
-
                             }
-
-                        });
-
-    }
-
-    public synchronized void send(
-            SignalMessage message
-    ) {
-
-        if (!connected || webSocket == null) {
-
-            Log.e(TAG, "WebSocket not connected");
-
-            return;
-
-        }
-
-        try {
-
-            String json = gson.toJson(message);
-
-            boolean sent = webSocket.send(json);
-
-            Log.d(
-                    TAG,
-                    "SEND -> " + json + " success=" + sent
-            );
-
-        } catch (Exception e) {
-
-            Log.e(
-                    TAG,
-                    "Send Failed",
-                    e
-            );
-
-        }
-
+                        }
+                );
     }
 
     public synchronized void disconnect() {
@@ -241,15 +213,12 @@ public class SignalingClient {
             }
 
             webSocket = null;
-
         }
-
     }
 
     public boolean isConnected() {
 
-        return connected && webSocket != null;
-
+        return connected
+                && webSocket != null;
     }
-
 }

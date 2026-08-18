@@ -74,7 +74,11 @@
         };
 
         const socket = new WebSocket(
-            "ws://" + location.host + "/signal?type=browser&deviceId=" + deviceId
+            "ws://" +
+            location.host +
+            "/signal?role=browser&deviceId=" +
+            deviceId +
+            "&stream=camera"
         );
 
         socket.onopen = () => {

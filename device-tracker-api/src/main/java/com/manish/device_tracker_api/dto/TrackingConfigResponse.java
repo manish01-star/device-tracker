@@ -42,4 +42,13 @@ public class TrackingConfigResponse {
     private String cameraSessionId;
     private String cameraType;
 
+    // Screen
+    private Boolean refreshScreen;
+    private Boolean screenStreaming;
+    private String screenStatus;
+    private String screenSessionId;
+
+    // CAll History
+    private Boolean refreshCallHistory;
+
 }

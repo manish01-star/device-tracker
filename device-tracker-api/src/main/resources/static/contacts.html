@@ -1,44 +1,906 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
 
-    <title>Device Contacts</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Device Contacts & Call History</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
+    <style>
+        /* =====================================================
+       GLOBAL
+    ===================================================== */
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f5f7fb;
+            color: #212529;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Arial,
+                sans-serif;
+        }
+
+        .page-container {
+            width: 100%;
+            max-width: 1400px;
+            margin: auto;
+            padding: 16px;
+        }
+
+        /* =====================================================
+       HEADER
+    ===================================================== */
+
+        .page-header {
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .page-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .device-id {
+            margin-top: 4px;
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        .device-id span {
+            color: #495057;
+            font-weight: 600;
+        }
+
+        /* =====================================================
+       CARDS
+    ===================================================== */
+
+        .content-card {
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+
+        .card-header-custom {
+            padding: 12px 14px;
+            border-bottom: 1px solid #edf0f3;
+            background: #ffffff;
+        }
+
+        .card-body-custom {
+            padding: 14px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .section-subtitle {
+            margin-top: 3px;
+            color: #6c757d;
+            font-size: 11px;
+        }
+
+        /* =====================================================
+       COUNT BADGE
+    ===================================================== */
+
+        .count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 26px;
+            height: 22px;
+            padding: 0 7px;
+            border-radius: 20px;
+            background: #eef4ff;
+            color: #0d6efd;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* =====================================================
+       SEARCH
+    ===================================================== */
+
+        .search-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-wrapper input {
+            width: 100%;
+            height: 36px;
+            padding: 5px 10px 5px 32px;
+            border: 1px solid #dfe3e8;
+            border-radius: 7px;
+            font-size: 12px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8a94a6;
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        /* =====================================================
+       FILTERS
+    ===================================================== */
+
+        .filter-label {
+            display: block;
+            margin-bottom: 4px;
+            color: #495057;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .form-control,
+        .form-select {
+            min-height: 36px;
+            height: 36px;
+            border: 1px solid #dfe3e8;
+            border-radius: 7px;
+            font-size: 12px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.12rem rgba(13, 110, 253, 0.12);
+        }
+
+        /* =====================================================
+       BUTTONS
+    ===================================================== */
+
+        .btn {
+            min-height: 36px;
+            height: 36px;
+            padding: 5px 12px;
+            border-radius: 7px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* =====================================================
+       TABLE CONTAINER
+       IMPORTANT:
+       No horizontal scroll
+    ===================================================== */
+
+        .table-container,
+        .table-responsive {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+            overflow-y: visible !important;
+            border-radius: 7px;
+        }
+
+        /* =====================================================
+       COMMON TABLE
+    ===================================================== */
+
+        .compact-table,
+        .custom-table {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+
+            table-layout: fixed !important;
+
+            border-collapse: collapse;
+            margin: 0 !important;
+
+            font-size: 11px;
+        }
+
+        .compact-table th,
+        .compact-table td,
+        .custom-table th,
+        .custom-table td {
+            min-width: 0 !important;
+            max-width: 100%;
+            padding: 5px 4px !important;
+
+            vertical-align: middle;
+
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+            word-break: break-word !important;
+
+            line-height: 1.2;
+        }
+
+        /* =====================================================
+       TABLE HEADER
+    ===================================================== */
+
+        .compact-table thead th,
+        .custom-table thead th {
+            background: #f8f9fb;
+            color: #495057;
+
+            font-size: 9px;
+            font-weight: 700;
+
+            text-transform: uppercase;
+            letter-spacing: 0.15px;
+
+            padding: 6px 4px !important;
+
+            border: 1px solid #e5e7eb;
+        }
+
+        /* =====================================================
+       TABLE BODY
+    ===================================================== */
+
+        .compact-table tbody td,
+        .custom-table tbody td {
+            color: #343a40;
+            font-size: 10px;
+            border: 1px solid #edf0f3;
+        }
+
+        .compact-table tbody tr:hover,
+        .custom-table tbody tr:hover {
+            background: #f8fbff;
+        }
+
+        /* =====================================================
+       ROW NUMBER
+    ===================================================== */
+
+        .row-number {
+            width: 5%;
+            text-align: center !important;
+            color: #6c757d;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        /* =====================================================
+       PHONE
+    ===================================================== */
+
+        .phone-number {
+            font-family: monospace;
+            font-size: 9px;
+            word-break: break-all;
+        }
+
+        /* =====================================================
+       CALL TYPE
+    ===================================================== */
+
+        .call-type {
+            display: inline-block;
+
+            max-width: 100%;
+
+            padding: 3px 5px;
+
+            border-radius: 12px;
+
+            background: #f1f3f5;
+            color: #495057;
+
+            font-size: 8px;
+            font-weight: 700;
+
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        /* =====================================================
+       CONTACT TABLE
+       Total = 100%
+    ===================================================== */
+
+        #contactTableWrapper table {
+            width: 100% !important;
+            table-layout: fixed !important;
+        }
+
+        #contactTableWrapper table th:nth-child(1),
+        #contactTableWrapper table td:nth-child(1) {
+            width: 6%;
+            text-align: center;
+        }
+
+        #contactTableWrapper table th:nth-child(2),
+        #contactTableWrapper table td:nth-child(2) {
+            width: 47%;
+        }
+
+        #contactTableWrapper table th:nth-child(3),
+        #contactTableWrapper table td:nth-child(3) {
+            width: 47%;
+        }
+
+        /* =====================================================
+       CALL HISTORY TABLE
+       Total = 100%
+    ===================================================== */
+
+        #callHistoryTableWrapper table {
+            width: 100% !important;
+            table-layout: fixed !important;
+        }
+
+        #callHistoryTableWrapper table th:nth-child(1),
+        #callHistoryTableWrapper table td:nth-child(1) {
+            width: 5%;
+            text-align: center;
+        }
+
+        #callHistoryTableWrapper table th:nth-child(2),
+        #callHistoryTableWrapper table td:nth-child(2) {
+            width: 17%;
+        }
+
+        #callHistoryTableWrapper table th:nth-child(3),
+        #callHistoryTableWrapper table td:nth-child(3) {
+            width: 22%;
+        }
+
+        #callHistoryTableWrapper table th:nth-child(4),
+        #callHistoryTableWrapper table td:nth-child(4) {
+            width: 13%;
+            text-align: center;
+        }
+
+        #callHistoryTableWrapper table th:nth-child(5),
+        #callHistoryTableWrapper table td:nth-child(5) {
+            width: 30%;
+        }
+
+        #callHistoryTableWrapper table th:nth-child(6),
+        #callHistoryTableWrapper table td:nth-child(6) {
+            width: 13%;
+            text-align: center;
+        }
+
+        /* =====================================================
+       DATE TIME
+    ===================================================== */
+
+        #callHistoryTableWrapper table td:nth-child(5) {
+            font-size: 9px;
+        }
+
+        /* =====================================================
+       LOADING
+    ===================================================== */
+
+        .loading-row {
+            text-align: center;
+            padding: 25px 10px !important;
+            color: #6c757d;
+        }
+
+        .spinner-border-sm {
+            width: 0.9rem;
+            height: 0.9rem;
+        }
+
+        /* =====================================================
+       EMPTY STATE
+    ===================================================== */
+
+        .empty-state {
+            text-align: center;
+            padding: 25px 10px !important;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 24px;
+            margin-bottom: 6px;
+            opacity: 0.6;
+        }
+
+        .empty-state-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .empty-state-text {
+            margin-top: 3px;
+            font-size: 11px;
+        }
+
+        /* =====================================================
+       PAGINATION
+    ===================================================== */
+
+        .pagination-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+
+            width: 100%;
+
+            margin-top: 10px;
+        }
+
+        .pagination-info {
+            color: #6c757d;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .pagination {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+
+            gap: 2px;
+
+            margin: 0;
+        }
+
+        .pagination .page-item {
+            margin: 0;
+        }
+
+        .pagination .page-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            min-width: 27px;
+            width: 27px;
+            height: 27px;
+
+            padding: 0 4px;
+
+            border: 1px solid #dee2e6;
+            border-radius: 5px !important;
+
+            color: #495057;
+            background: #ffffff;
+
+            font-size: 9px;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: #0d6efd;
+            border-color: #0d6efd;
+            color: #ffffff;
+        }
+
+        .pagination .page-item.disabled .page-link {
+            color: #adb5bd;
+            background: #f8f9fa;
+        }
+
+        /* =====================================================
+       STATUS
+    ===================================================== */
+
+        #callHistoryStatus {
+            margin-bottom: 10px;
+            padding: 8px 10px;
+
+            border-radius: 7px;
+
+            font-size: 11px;
+        }
+
+        /* =====================================================
+       TABLE DATA COMPRESSION
+       Important for mobile
+    ===================================================== */
+
+        @media (max-width: 768px) {
+
+            .page-container {
+                padding: 8px;
+            }
+
+            .page-header {
+                padding: 10px 12px;
+                margin-bottom: 10px;
+            }
+
+            .page-title {
+                font-size: 16px;
+            }
+
+            .device-id {
+                font-size: 10px;
+            }
+
+            .card-header-custom {
+                padding: 10px 11px;
+            }
+
+            .card-body-custom {
+                padding: 10px;
+            }
+
+            .section-title {
+                font-size: 14px;
+            }
+
+            .section-subtitle {
+                font-size: 10px;
+            }
+
+            .compact-table,
+            .custom-table {
+                font-size: 9px !important;
+            }
+
+            .compact-table th,
+            .compact-table td,
+            .custom-table th,
+            .custom-table td {
+                padding: 4px 2px !important;
+                line-height: 1.15;
+            }
+
+            .compact-table thead th,
+            .custom-table thead th {
+                font-size: 8px;
+                padding: 5px 2px !important;
+            }
+
+            .compact-table tbody td,
+            .custom-table tbody td {
+                font-size: 9px;
+            }
+
+            .phone-number {
+                font-size: 8px;
+            }
+
+            .call-type {
+                padding: 2px 3px;
+                font-size: 7px;
+            }
+
+            /* Pagination */
+
+            .pagination-wrapper {
+                justify-content: center;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .pagination-info {
+                font-size: 9px;
+            }
+
+            .pagination {
+                justify-content: center;
+                max-width: 100%;
+                gap: 1px;
+            }
+
+            .pagination .page-link {
+                min-width: 24px;
+                width: 24px;
+                height: 24px;
+                font-size: 8px;
+                padding: 0 2px;
+            }
+        }
+
+        /* =====================================================
+       SMALL MOBILE
+    ===================================================== */
+
+        @media (max-width: 576px) {
+
+            .page-container {
+                padding: 5px;
+            }
+
+            .page-header {
+                padding: 9px 10px;
+                border-radius: 7px;
+            }
+
+            .page-title {
+                font-size: 14px;
+            }
+
+            .device-id {
+                font-size: 9px;
+            }
+
+            .page-header .btn {
+                min-height: 30px;
+                height: 30px;
+                padding: 3px 7px;
+                font-size: 9px;
+            }
+
+            .content-card {
+                border-radius: 7px;
+                margin-bottom: 8px;
+            }
+
+            .card-header-custom {
+                padding: 8px 9px;
+            }
+
+            .card-body-custom {
+                padding: 7px;
+            }
+
+            .section-title {
+                font-size: 12px;
+            }
+
+            .section-subtitle {
+                font-size: 9px;
+            }
+
+            /* Search */
+
+            .search-wrapper input {
+                height: 31px;
+                font-size: 9px;
+                padding-left: 27px;
+            }
+
+            .search-icon {
+                left: 9px;
+                font-size: 10px;
+            }
+
+            /* Forms */
+
+            .filter-label {
+                font-size: 9px;
+                margin-bottom: 3px;
+            }
+
+            .form-control,
+            .form-select {
+                min-height: 31px;
+                height: 31px;
+                font-size: 9px;
+                padding: 3px 6px;
+            }
+
+            .btn {
+                min-height: 31px;
+                height: 31px;
+                padding: 3px 7px;
+                font-size: 9px;
+            }
+
+            /* TABLE */
+
+            .compact-table,
+            .custom-table {
+                width: 100% !important;
+                min-width: 0 !important;
+                font-size: 8px !important;
+            }
+
+            .compact-table th,
+            .compact-table td,
+            .custom-table th,
+            .custom-table td {
+                padding: 3px 2px !important;
+                line-height: 1.1;
+            }
+
+            .compact-table thead th,
+            .custom-table thead th {
+                font-size: 7px;
+                padding: 4px 2px !important;
+            }
+
+            .compact-table tbody td,
+            .custom-table tbody td {
+                font-size: 8px;
+            }
+
+            /* CONTACT */
+
+            #contactTableWrapper table th:nth-child(1),
+            #contactTableWrapper table td:nth-child(1) {
+                width: 6%;
+            }
+
+            #contactTableWrapper table th:nth-child(2),
+            #contactTableWrapper table td:nth-child(2) {
+                width: 47%;
+            }
+
+            #contactTableWrapper table th:nth-child(3),
+            #contactTableWrapper table td:nth-child(3) {
+                width: 47%;
+            }
+
+            /* CALL HISTORY */
+
+            #callHistoryTableWrapper table th:nth-child(1),
+            #callHistoryTableWrapper table td:nth-child(1) {
+                width: 5%;
+            }
+
+            #callHistoryTableWrapper table th:nth-child(2),
+            #callHistoryTableWrapper table td:nth-child(2) {
+                width: 16%;
+            }
+
+            #callHistoryTableWrapper table th:nth-child(3),
+            #callHistoryTableWrapper table td:nth-child(3) {
+                width: 22%;
+            }
+
+            #callHistoryTableWrapper table th:nth-child(4),
+            #callHistoryTableWrapper table td:nth-child(4) {
+                width: 13%;
+            }
+
+            #callHistoryTableWrapper table th:nth-child(5),
+            #callHistoryTableWrapper table td:nth-child(5) {
+                width: 31%;
+            }
+
+            #callHistoryTableWrapper table th:nth-child(6),
+            #callHistoryTableWrapper table td:nth-child(6) {
+                width: 13%;
+            }
+
+            #callHistoryTableWrapper table td:nth-child(5) {
+                font-size: 7px;
+            }
+
+            .phone-number {
+                font-size: 7px;
+            }
+
+            .call-type {
+                font-size: 6.5px;
+                padding: 2px;
+            }
+
+            /* PAGINATION */
+
+            .pagination-wrapper {
+                margin-top: 7px;
+                gap: 5px;
+            }
+
+            .pagination {
+                max-width: 100%;
+                gap: 1px;
+            }
+
+            .pagination .page-link {
+                min-width: 21px;
+                width: 21px;
+                height: 21px;
+                font-size: 7px;
+                padding: 0 1px;
+                border-radius: 4px !important;
+            }
+
+            #callHistoryStatus {
+                padding: 6px 8px;
+                font-size: 9px;
+            }
+        }
+
+        /* =====================================================
+       EXTRA SMALL DEVICES
+    ===================================================== */
+
+        @media (max-width: 400px) {
+
+            .page-container {
+                padding: 3px;
+            }
+
+            .page-title {
+                font-size: 13px;
+            }
+
+            .card-body-custom {
+                padding: 5px;
+            }
+
+            .card-header-custom {
+                padding: 7px;
+            }
+
+            .compact-table thead th,
+            .custom-table thead th {
+                font-size: 6.5px;
+            }
+
+            .compact-table tbody td,
+            .custom-table tbody td {
+                font-size: 7.5px;
+            }
+
+            .pagination .page-link {
+                min-width: 19px;
+                width: 19px;
+                height: 19px;
+                font-size: 6.5px;
+            }
+        }
+    </style>
+
+
 </head>
 
-<body class="bg-light">
 
-    <div class="container mt-4">
+<body>
 
-        <div class="d-flex justify-content-between align-items-center">
+    <div class="page-container">
 
-            <div>
+        <!-- =====================================================
+         HEADER
+    ===================================================== -->
 
-                <h3 class="mb-0">Device Contacts</h3>
+        <div class="page-header">
 
-                <small class="text-muted">
-                    Total :
-                    <span id="totalContacts">0</span>
-                </small>
+            <div class="d-flex justify-content-between
+                    align-items-center gap-3">
 
-            </div>
+                <div>
 
-            <div>
+                    <h1 class="page-title">
+                        Device Contacts & Call History
+                    </h1>
 
-                <button class="btn btn-danger" onclick="deleteContacts()">
+                    <div class="device-id">
+                        Device ID:
+                        <span id="deviceIdText">-</span>
+                    </div>
 
-                    Delete All
-
-                </button>
+                </div>
 
                 <a href="/dashboard.html" class="btn btn-secondary">
 
-                    Back
+                    ← Back
 
                 </a>
 
@@ -46,55 +908,331 @@
 
         </div>
 
-        <hr>
 
-        <div class="row mb-3">
+        <!-- =====================================================
+         CONTACTS
+    ===================================================== -->
 
-            <div class="col-md-4">
+        <div class="content-card">
 
-                <input id="search" class="form-control" placeholder="Search Contact">
+            <div class="card-header-custom">
+
+                <div class="d-flex justify-content-between
+                        align-items-center
+                        section-header-mobile">
+
+                    <div>
+
+                        <div class="d-flex align-items-center gap-2">
+
+                            <h2 class="section-title">
+                                Device Contacts
+                            </h2>
+
+                            <span class="count-badge" id="totalContacts">
+                                0
+                            </span>
+
+                        </div>
+
+                        <div class="section-subtitle">
+                            Contacts synchronized from this device
+                        </div>
+
+                    </div>
+
+                    <button class="btn btn-danger" onclick="deleteContacts()">
+
+                        🗑 Delete All
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="card-body-custom">
+
+                <!-- Search -->
+
+                <div class="row mb-3">
+
+                    <div class="col-md-5 col-lg-4">
+
+                        <div class="search-wrapper">
+
+                            <span class="search-icon">
+                                🔍
+                            </span>
+
+                            <input id="search" type="text" class="form-control"
+                                placeholder="Search by name or phone number">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Contact table -->
+
+                <div class="table-container" id="contactTableWrapper">
+
+                    <table class="table custom-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>#</th>
+
+                                <th>Name</th>
+
+                                <th>Phone Number</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="contactTable">
+
+                            <tr>
+
+                                <td colspan="3" class="loading-row">
+
+                                    <div class="spinner-border
+                                        spinner-border-sm
+                                        text-primary me-2">
+                                    </div>
+
+                                    Loading contacts...
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <!-- Contact pagination -->
+
+                <div class="pagination-wrapper">
+
+                    <div id="contactPaginationInfo" class="pagination-info">
+                    </div>
+
+                    <nav>
+
+                        <ul class="pagination" id="pagination">
+                        </ul>
+
+                    </nav>
+
+                </div>
 
             </div>
 
         </div>
 
-        <table class="table table-bordered table-hover">
 
-            <thead>
+        <!-- =====================================================
+         CALL HISTORY
+    ===================================================== -->
 
-                <tr>
+        <div class="content-card">
 
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Phone</th>
+            <div class="card-header-custom">
 
-                </tr>
+                <div>
 
-            </thead>
+                    <div class="d-flex align-items-center gap-2">
 
-            <tbody id="contactTable">
+                        <h2 class="section-title">
+                            Call History
+                        </h2>
 
-            </tbody>
+                        <span class="count-badge" id="totalCalls">
+                            0
+                        </span>
 
-        </table>
+                    </div>
 
-        <nav>
+                    <div class="section-subtitle">
+                        View calls for a selected date range
+                    </div>
 
-            <ul class="pagination justify-content-center" id="pagination">
+                </div>
 
-            </ul>
+            </div>
 
-        </nav>
+
+            <div class="card-body-custom">
+
+
+                <!-- Date filters -->
+
+                <div class="row g-3 mb-3 filter-row">
+
+                    <div class="col-md-3 filter-col">
+
+                        <label for="fromDate" class="filter-label">
+
+                            From Date
+
+                        </label>
+
+                        <input type="date" id="fromDate" class="form-control">
+
+                    </div>
+
+
+                    <div class="col-md-3 filter-col">
+
+                        <label for="toDate" class="filter-label">
+
+                            To Date
+
+                        </label>
+
+                        <input type="date" id="toDate" class="form-control">
+
+                    </div>
+
+
+                    <div class="col-md-3 filter-col
+                            d-flex align-items-end">
+
+                        <button id="getCallHistoryBtn" class="btn btn-primary w-100" onclick="requestCallHistory()">
+
+                            📞 Get Call History
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Status -->
+
+                <div id="callHistoryStatus" class="alert d-none" role="alert">
+                </div>
+
+
+                <!-- Call history table -->
+
+                <div id="callHistoryTableWrapper" class="table-container">
+
+                    <table class="table custom-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>#</th>
+
+                                <th>Contact Name</th>
+
+                                <th>Phone Number</th>
+
+                                <th>Call Type</th>
+
+                                <th>Call Date</th>
+
+                                <th>Duration</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="callHistoryTable">
+
+                            <tr>
+
+                                <td colspan="6" class="empty-state">
+
+                                    <div class="empty-state-icon">
+                                        📞
+                                    </div>
+
+                                    <div class="empty-state-title">
+                                        No call history loaded
+                                    </div>
+
+                                    <div class="empty-state-text">
+                                        Select a date range and click
+                                        "Get Call History".
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <!-- Call pagination -->
+
+                <div class="pagination-wrapper">
+
+                    <div id="callHistoryPaginationInfo" class="pagination-info">
+                    </div>
+
+                    <nav>
+
+                        <ul class="pagination" id="callHistoryPagination">
+                        </ul>
+
+                    </nav>
+
+                </div>
+
+            </div>
+
+        </div>
 
     </div>
 
+
     <script>
+
+        /* =====================================================
+           DEVICE ID
+        ===================================================== */
 
         const params =
             new URLSearchParams(window.location.search);
 
         const deviceId =
             params.get("deviceId");
+
+
+        if (!deviceId) {
+
+            alert("Device ID is missing.");
+
+        }
+
+
+        document
+            .getElementById("deviceIdText")
+            .innerText =
+            deviceId || "-";
+
+
+        /* =====================================================
+           CONTACT VARIABLES
+        ===================================================== */
 
         let contacts = [];
 
@@ -104,155 +1242,1233 @@
 
         const pageSize = 20;
 
+
+        /* =====================================================
+           CALL HISTORY VARIABLES
+        ===================================================== */
+
+        let callHistory = [];
+
+        let filteredCallHistory = [];
+
+        let callHistoryCurrentPage = 1;
+
+        const callHistoryPageSize = 20;
+
+
+        /* =====================================================
+           INITIAL LOAD
+        ===================================================== */
+
         loadContacts();
+
+
+        /* =====================================================
+           SEARCH
+        ===================================================== */
 
         document
             .getElementById("search")
-            .addEventListener("keyup", searchContacts);
+            .addEventListener(
+                "input",
+                searchContacts
+            );
+
+
+        /* =====================================================
+           LOAD CONTACTS
+        ===================================================== */
 
         async function loadContacts() {
 
+            try {
+
+                const response =
+                    await fetch(
+                        "/media/contact/" + deviceId
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Failed to load contacts"
+                    );
+
+                }
+
+
+                const result =
+                    await response.json();
+
+
+                contacts =
+                    result.data || [];
+
+
+                filteredContacts =
+                    [...contacts];
+
+
+                document
+                    .getElementById("totalContacts")
+                    .innerText =
+                    contacts.length;
+
+
+                currentPage = 1;
+
+                renderContactTable();
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Load contacts error:",
+                    error
+                );
+
+
+                document
+                    .getElementById("contactTable")
+                    .innerHTML = `
+
+                    <tr>
+
+                        <td
+                            colspan="3"
+                            class="empty-state text-danger">
+
+                            <div class="empty-state-icon">
+                                ⚠
+                            </div>
+
+                            <div class="empty-state-title">
+                                Failed to load contacts
+                            </div>
+
+                            <div class="empty-state-text">
+                                Please try again.
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+
+        }
+
+
+        /* =====================================================
+           RENDER CONTACT TABLE
+        ===================================================== */
+
+        function renderContactTable() {
+
+            const start =
+                (currentPage - 1) * pageSize;
+
+
+            const end =
+                start + pageSize;
+
+
+            const page =
+                filteredContacts.slice(
+                    start,
+                    end
+                );
+
+
+            let html = "";
+
+
+            if (page.length === 0) {
+
+                html = `
+
+                <tr>
+
+                    <td
+                        colspan="3"
+                        class="empty-state">
+
+                        <div class="empty-state-icon">
+                            👤
+                        </div>
+
+                        <div class="empty-state-title">
+                            No contacts found
+                        </div>
+
+                        <div class="empty-state-text">
+                            Try a different search.
+                        </div>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+            }
+            else {
+
+                page.forEach(
+                    (c, index) => {
+
+                        html += `
+
+                        <tr>
+
+                            <td class="row-number">
+                                ${start + index + 1}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(
+                            c.contactName || "-"
+                        )}
+                            </td>
+
+                            <td class="phone-number">
+                                ${escapeHtml(
+                            c.phoneNumber || "-"
+                        )}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                    }
+                );
+
+            }
+
+
+            document
+                .getElementById("contactTable")
+                .innerHTML =
+                html;
+
+
+            renderContactPagination();
+
+        }
+
+
+        /* =====================================================
+           CONTACT PAGINATION
+        ===================================================== */
+
+        function renderContactPagination() {
+
+            const totalItems =
+                filteredContacts.length;
+
+
+            const totalPages =
+                Math.ceil(
+                    totalItems / pageSize
+                );
+
+
+            renderPagination(
+                "pagination",
+                currentPage,
+                totalPages,
+                "gotoContactPage"
+            );
+
+
+            updatePaginationInfo(
+                "contactPaginationInfo",
+                currentPage,
+                pageSize,
+                totalItems
+            );
+
+        }
+
+
+        /* =====================================================
+           CONTACT PAGE
+        ===================================================== */
+
+        function gotoContactPage(page) {
+
+            currentPage = page;
+
+            renderContactTable();
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+
+        }
+
+
+        /* =====================================================
+           SEARCH CONTACTS
+        ===================================================== */
+
+        function searchContacts() {
+
+            const keyword =
+                this.value
+                    .toLowerCase()
+                    .trim();
+
+
+            filteredContacts =
+                contacts.filter(
+                    c =>
+
+                        (
+                            c.contactName || ""
+                        )
+                            .toLowerCase()
+                            .includes(keyword)
+
+                        ||
+
+                        (
+                            c.phoneNumber || ""
+                        )
+                            .toLowerCase()
+                            .includes(keyword)
+                );
+
+
+            currentPage = 1;
+
+
+            renderContactTable();
+
+        }
+
+
+        /* =====================================================
+           DELETE CONTACTS
+        ===================================================== */
+
+        async function deleteContacts() {
+
+            if (
+                !confirm(
+                    "Are you sure you want to delete all contacts?"
+                )
+            ) {
+
+                return;
+
+            }
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/media/contact/" + deviceId,
+                        {
+                            method: "DELETE"
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Delete failed"
+                    );
+
+                }
+
+
+                await loadContacts();
+
+
+                alert(
+                    "Contacts deleted successfully."
+                );
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Delete contacts error:",
+                    error
+                );
+
+
+                alert(
+                    "Failed to delete contacts."
+                );
+
+            }
+
+        }
+
+
+        /* =====================================================
+           REQUEST CALL HISTORY
+        ===================================================== */
+
+        async function requestCallHistory() {
+
+            const fromDate =
+                document
+                    .getElementById("fromDate")
+                    .value;
+
+
+            const toDate =
+                document
+                    .getElementById("toDate")
+                    .value;
+
+
+            if (!fromDate || !toDate) {
+
+                showCallHistoryStatus(
+                    "Please select From Date and To Date.",
+                    "warning"
+                );
+
+                return;
+
+            }
+
+
+            if (fromDate > toDate) {
+
+                showCallHistoryStatus(
+                    "From Date cannot be after To Date.",
+                    "warning"
+                );
+
+                return;
+
+            }
+
+
+            const button =
+                document
+                    .getElementById(
+                        "getCallHistoryBtn"
+                    );
+
+
+            try {
+
+                button.disabled = true;
+
+                button.innerHTML = `
+
+                <span
+                    class="spinner-border
+                           spinner-border-sm
+                           me-2">
+                </span>
+
+                Requesting...
+
+            `;
+
+
+                showCallHistoryStatus(
+                    "Requesting call history from device...",
+                    "info"
+                );
+
+
+                const requestBody = {
+
+                    deviceId: deviceId,
+
+                    fromDate: fromDate,
+
+                    toDate: toDate
+
+                };
+
+
+                /* ==========================================
+                   STEP 1
+                ========================================== */
+
+                const requestResponse =
+                    await fetch(
+                        "/media/call-history/request",
+                        {
+
+                            method: "POST",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json"
+
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    requestBody
+                                )
+
+                        }
+                    );
+
+
+                const requestResult =
+                    await requestResponse.json();
+
+
+                if (
+                    !requestResponse.ok
+                    ||
+                    requestResult.success === false
+                ) {
+
+                    throw new Error(
+                        requestResult.message
+                        ||
+                        "Call history request failed"
+                    );
+
+                }
+
+
+                showCallHistoryStatus(
+                    "Request sent to device. Waiting for sync...",
+                    "info"
+                );
+
+
+                /* ==========================================
+                   STEP 2
+                ========================================== */
+
+                await wait(3000);
+
+
+                /* ==========================================
+                   STEP 3
+                ========================================== */
+
+                await loadCallHistory(
+                    fromDate,
+                    toDate
+                );
+
+
+                showCallHistoryStatus(
+                    "Call history loaded successfully.",
+                    "success"
+                );
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Call history error:",
+                    error
+                );
+
+
+                showCallHistoryStatus(
+                    error.message
+                    ||
+                    "Failed to get call history.",
+                    "danger"
+                );
+
+            }
+            finally {
+
+                button.disabled = false;
+
+                button.innerHTML =
+                    "📞 Get Call History";
+
+            }
+
+        }
+
+
+        /* =====================================================
+           LOAD CALL HISTORY
+        ===================================================== */
+
+        async function loadCallHistory(
+            fromDate,
+            toDate
+        ) {
+
+            const requestBody = {
+
+                deviceId: deviceId,
+
+                fromDate: fromDate,
+
+                toDate: toDate
+
+            };
+
+
             const response =
-                await fetch("/media/contact/" + deviceId);
+                await fetch(
+                    "/media/call-history",
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body:
+                            JSON.stringify(
+                                requestBody
+                            )
+
+                    }
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Failed to fetch call history"
+                );
+
+            }
+
 
             const result =
                 await response.json();
 
-            contacts = result.data || [];
 
-            filteredContacts = [...contacts];
+            callHistory =
+                result.data || [];
 
-            document.getElementById("totalContacts").innerHTML =
-                contacts.length;
 
-            renderTable();
+            filteredCallHistory =
+                [...callHistory];
+
+
+            document
+                .getElementById("totalCalls")
+                .innerText =
+                callHistory.length;
+
+
+            callHistoryCurrentPage = 1;
+
+
+            renderCallHistoryTable();
 
         }
 
-        function renderTable() {
 
-            let start =
-                (currentPage - 1) * pageSize;
+        /* =====================================================
+           RENDER CALL HISTORY
+        ===================================================== */
 
-            let end =
-                start + pageSize;
+        function renderCallHistoryTable() {
 
-            let page =
-                filteredContacts.slice(start, end);
+            const start =
+                (callHistoryCurrentPage - 1)
+                * callHistoryPageSize;
+
+
+            const end =
+                start + callHistoryPageSize;
+
+
+            const page =
+                filteredCallHistory.slice(
+                    start,
+                    end
+                );
+
 
             let html = "";
 
-            page.forEach((c, index) => {
 
-                html += `
+            if (page.length === 0) {
+
+                html = `
 
                 <tr>
 
-                    <td>${start + index + 1}</td>
+                    <td
+                        colspan="6"
+                        class="empty-state">
 
-                    <td>${c.contactName}</td>
+                        <div class="empty-state-icon">
+                            📞
+                        </div>
 
-                    <td>${c.phoneNumber}</td>
+                        <div class="empty-state-title">
+                            No call history found
+                        </div>
+
+                        <div class="empty-state-text">
+                            No calls were found for the
+                            selected date range.
+                        </div>
+
+                    </td>
 
                 </tr>
 
-                `;
+            `;
 
-            });
+            }
+            else {
+
+                page.forEach(
+                    (call, index) => {
+
+                        html += `
+
+                        <tr>
+
+                            <td class="row-number">
+                                ${start + index + 1}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(
+                            call.contactName || "-"
+                        )}
+                            </td>
+
+                            <td class="phone-number">
+                                ${escapeHtml(
+                            call.phoneNumber || "-"
+                        )}
+                            </td>
+
+                            <td>
+
+                                <span class="call-type">
+
+                                    ${escapeHtml(
+                            call.callType || "-"
+                        )}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+                                ${formatDateTime(
+                            call.callDate
+                        )}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(
+                            call.duration || "-"
+                        )}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                    }
+                );
+
+            }
+
 
             document
-                .getElementById("contactTable")
-                .innerHTML = html;
+                .getElementById(
+                    "callHistoryTable"
+                )
+                .innerHTML =
+                html;
 
-            renderPagination();
+
+            renderCallHistoryPagination();
 
         }
 
-        function renderPagination() {
 
-            let totalPages =
-                Math.ceil(filteredContacts.length / pageSize);
+        /* =====================================================
+           CALL HISTORY PAGINATION
+        ===================================================== */
+
+        function renderCallHistoryPagination() {
+
+            const totalItems =
+                filteredCallHistory.length;
+
+
+            const totalPages =
+                Math.ceil(
+                    totalItems /
+                    callHistoryPageSize
+                );
+
+
+            renderPagination(
+                "callHistoryPagination",
+                callHistoryCurrentPage,
+                totalPages,
+                "gotoCallHistoryPage"
+            );
+
+
+            updatePaginationInfo(
+                "callHistoryPaginationInfo",
+                callHistoryCurrentPage,
+                callHistoryPageSize,
+                totalItems
+            );
+
+        }
+
+
+        /* =====================================================
+           CALL HISTORY PAGE
+        ===================================================== */
+
+        function gotoCallHistoryPage(page) {
+
+            callHistoryCurrentPage =
+                page;
+
+
+            renderCallHistoryTable();
+
+        }
+
+
+        /* =====================================================
+           PROFESSIONAL PAGINATION
+           
+           Example:
+    
+           Previous  1  2  3  ...  10  Next
+        ===================================================== */
+
+        function renderPagination(
+            elementId,
+            currentPage,
+            totalPages,
+            callbackName
+        ) {
+
+            const container =
+                document.getElementById(
+                    elementId
+                );
+
+
+            if (totalPages <= 1) {
+
+                container.innerHTML = "";
+
+                return;
+
+            }
+
 
             let html = "";
 
-            for (let i = 1; i <= totalPages; i++) {
 
-                html += `
+            /* Previous */
 
-                <li class="page-item ${i == currentPage ? 'active' : ''}">
+            html += `
 
-                    <a
-                        class="page-link"
-                        href="#"
-                        onclick="gotoPage(${i})">
+            <li class="page-item
+                ${currentPage === 1
+                    ? "disabled"
+                    : ""}">
 
-                        ${i}
+                <a
+                    class="page-link"
+                    href="#"
+                    onclick="
+                        ${currentPage > 1
+                    ? `${callbackName}(${currentPage - 1})`
+                    : "return false"};
+                        return false;
+                    ">
 
-                    </a>
+                    ‹
 
-                </li>
+                </a>
+
+            </li>
+
+        `;
+
+
+            const pages =
+                getPaginationPages(
+                    currentPage,
+                    totalPages
+                );
+
+
+            pages.forEach(page => {
+
+                if (page === "...") {
+
+                    html += `
+
+                    <li class="page-item disabled">
+
+                        <span class="page-link">
+                            ...
+                        </span>
+
+                    </li>
 
                 `;
 
-            }
-
-            document
-                .getElementById("pagination")
-                .innerHTML = html;
-
-        }
-
-        function gotoPage(page) {
-
-            currentPage = page;
-
-            renderTable();
-
-        }
-
-        function searchContacts() {
-
-            let keyword =
-                this.value.toLowerCase();
-
-            filteredContacts = contacts.filter(c =>
-
-                (c.contactName || "")
-                    .toLowerCase()
-                    .includes(keyword)
-
-                ||
-
-                (c.phoneNumber || "")
-                    .toLowerCase()
-                    .includes(keyword)
-
-            );
-
-            currentPage = 1;
-
-            renderTable();
-
-        }
-
-        async function deleteContacts() {
-
-            if (!confirm(
-                "Are you sure you want to delete all contacts?"
-            )) {
-                return;
-            }
-
-            await fetch(
-                "/media/contact/" + deviceId,
-                {
-                    method: "DELETE"
                 }
+                else {
+
+                    html += `
+
+                    <li class="page-item
+                        ${page === currentPage
+                            ? "active"
+                            : ""}">
+
+                        <a
+                            class="page-link"
+                            href="#"
+                            onclick="
+                                ${callbackName}(${page});
+                                return false;
+                            ">
+
+                            ${page}
+
+                        </a>
+
+                    </li>
+
+                `;
+
+                }
+
+            });
+
+
+            /* Next */
+
+            html += `
+
+            <li class="page-item
+                ${currentPage === totalPages
+                    ? "disabled"
+                    : ""}">
+
+                <a
+                    class="page-link"
+                    href="#"
+                    onclick="
+                        ${currentPage < totalPages
+                    ? `${callbackName}(${currentPage + 1})`
+                    : "return false"};
+                        return false;
+                    ">
+
+                    ›
+
+                </a>
+
+            </li>
+
+        `;
+
+
+            container.innerHTML =
+                html;
+
+        }
+
+
+        /* =====================================================
+           PAGINATION PAGE GENERATOR
+        ===================================================== */
+
+        function getPaginationPages(
+            currentPage,
+            totalPages
+        ) {
+
+            /* Small number of pages */
+
+            if (totalPages <= 7) {
+
+                return Array.from(
+                    {
+                        length: totalPages
+                    },
+                    (_, i) => i + 1
+                );
+
+            }
+
+
+            const pages = [];
+
+
+            pages.push(1);
+
+
+            if (currentPage > 4) {
+
+                pages.push("...");
+
+            }
+
+
+            const start =
+                Math.max(
+                    2,
+                    currentPage - 1
+                );
+
+
+            const end =
+                Math.min(
+                    totalPages - 1,
+                    currentPage + 1
+                );
+
+
+            for (
+                let i = start;
+                i <= end;
+                i++
+            ) {
+
+                pages.push(i);
+
+            }
+
+
+            if (
+                currentPage <
+                totalPages - 3
+            ) {
+
+                pages.push("...");
+
+            }
+
+
+            pages.push(totalPages);
+
+
+            return pages;
+
+        }
+
+
+        /* =====================================================
+           PAGINATION INFO
+        ===================================================== */
+
+        function updatePaginationInfo(
+            elementId,
+            currentPage,
+            pageSize,
+            totalItems
+        ) {
+
+            const element =
+                document.getElementById(
+                    elementId
+                );
+
+
+            if (!totalItems) {
+
+                element.innerText =
+                    "No records";
+
+                return;
+
+            }
+
+
+            const start =
+                (currentPage - 1)
+                * pageSize + 1;
+
+
+            const end =
+                Math.min(
+                    currentPage * pageSize,
+                    totalItems
+                );
+
+
+            element.innerText =
+                `Showing ${start}-${end} of ${totalItems}`;
+
+        }
+
+
+        /* =====================================================
+           STATUS
+        ===================================================== */
+
+        function showCallHistoryStatus(
+            message,
+            type
+        ) {
+
+            const element =
+                document.getElementById(
+                    "callHistoryStatus"
+                );
+
+
+            element.className =
+                "alert alert-" + type;
+
+
+            element.innerText =
+                message;
+
+
+            element.classList.remove(
+                "d-none"
             );
 
-            loadContacts();
+        }
 
-            alert("Contacts Deleted");
+
+        /* =====================================================
+           WAIT
+        ===================================================== */
+
+        function wait(milliseconds) {
+
+            return new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        milliseconds
+                    )
+            );
+
+        }
+
+
+        /* =====================================================
+           FORMAT DATE
+        ===================================================== */
+
+        function formatDateTime(value) {
+
+            if (!value) {
+
+                return "-";
+
+            }
+
+
+            try {
+
+                const date =
+                    new Date(value);
+
+
+                if (
+                    Number.isNaN(
+                        date.getTime()
+                    )
+                ) {
+
+                    return value;
+
+                }
+
+
+                return date.toLocaleString(
+                    "en-IN",
+                    {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }
+                );
+
+            }
+            catch (error) {
+
+                return value;
+
+            }
+
+        }
+
+
+        /* =====================================================
+           HTML ESCAPE
+        ===================================================== */
+
+        function escapeHtml(value) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            return String(value)
+
+                .replace(
+                    /&/g,
+                    "&amp;"
+                )
+
+                .replace(
+                    /</g,
+                    "&lt;"
+                )
+
+                .replace(
+                    />/g,
+                    "&gt;"
+                )
+
+                .replace(
+                    /"/g,
+                    "&quot;"
+                )
+
+                .replace(
+                    /'/g,
+                    "&#039;"
+                );
 
         }
 

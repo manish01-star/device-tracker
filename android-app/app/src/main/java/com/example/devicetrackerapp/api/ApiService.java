@@ -2,10 +2,13 @@ package com.example.devicetrackerapp.api;
 
 import com.example.devicetrackerapp.dto.ApiResponse;
 import com.example.devicetrackerapp.dto.AudioFolderSyncRequest;
+import com.example.devicetrackerapp.dto.CallHistorySyncRequest;
+import com.example.devicetrackerapp.dto.CameraRequest;
 import com.example.devicetrackerapp.dto.ContactPayload;
 import com.example.devicetrackerapp.dto.ImageFolderSyncRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceResponse;
+import com.example.devicetrackerapp.dto.ScreenRequest;
 import com.example.devicetrackerapp.dto.TrackingConfigResponse;
 import com.example.devicetrackerapp.dto.UpdateLocationRequest;
 import com.example.devicetrackerapp.dto.VideoFolderSyncRequest;
@@ -19,6 +22,7 @@ import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 import java.util.List;
 
@@ -119,9 +123,9 @@ public interface ApiService {
 
     // ================= Camera =================
 
-    @POST("media/camera/request/{deviceId}")
+    @POST("media/camera/request")
     Call<ApiResponse<String>> requestCamera(
-            @Path("deviceId") String deviceId
+            @Body CameraRequest request
     );
 
     @POST("media/camera/request-received/{deviceId}")
@@ -138,4 +142,47 @@ public interface ApiService {
     Call<ApiResponse<String>> cameraStopped(
             @Path("deviceId") String deviceId
     );
+
+
+    // ================= Screen =================
+
+
+    @POST("media/screen/request")
+    Call<ApiResponse<String>> requestScreen(
+            @Body ScreenRequest request
+    );
+
+    @POST("media/screen/request-received/{deviceId}")
+    Call<ApiResponse<String>> screenRequestReceived(
+            @Path("deviceId") String deviceId
+    );
+
+
+    @POST("media/screen/started/{deviceId}")
+    Call<ApiResponse<String>> screenStarted(
+            @Path("deviceId") String deviceId
+    );
+
+
+    @POST("media/screen/stopped/{deviceId}")
+    Call<ApiResponse<String>> screenStopped(
+            @Path("deviceId") String deviceId
+    );
+
+    @POST("media/screen/cancel/{deviceId}")
+    Call<ApiResponse<String>> screenCancel(
+            @Path("deviceId") String deviceId
+    );
+
+    //Call History
+    @POST("/media/call-history/sync")
+    Call<ApiResponse<String>> syncCallHistory(
+            @Body CallHistorySyncRequest request
+    );
+
+    @POST("device/call-history/complete")
+    Call<ApiResponse<String>> callHistorySyncCompleted(
+            @Query("deviceId") String deviceId
+    );
+
 }

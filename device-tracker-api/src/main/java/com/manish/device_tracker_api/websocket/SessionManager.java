@@ -1,145 +1,337 @@
 package com.manish.device_tracker_api.websocket;
 
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 
+@Slf4j
 @Component
 public class SessionManager {
 
 
-    private final Map<String, WebSocketSession> devices =
-            new ConcurrentHashMap<>();
-
-
-    private final Map<String, WebSocketSession> browsers =
+    private final Map<String, WebSocketSession> sessions =
             new ConcurrentHashMap<>();
 
 
 
-    public void addDevice(
+    private String generateKey(
             String deviceId,
+            String role,
+            String stream
+    ){
+
+        return deviceId 
+                + "_"
+                + role
+                + "_"
+                + stream;
+
+    }
+
+
+
+
+
+    /**
+     * Add websocket session
+     */
+    public void addSession(
+            String deviceId,
+            String role,
+            String stream,
             WebSocketSession session
     ){
 
-        devices.put(deviceId,session);
 
-    }
-
-
-
-    public void addBrowser(
-            String deviceId,
-            WebSocketSession session
-    ){
-
-        browsers.put(deviceId,session);
-
-    }
+        String key =
+                generateKey(
+                        deviceId,
+                        role,
+                        stream
+                );
 
 
 
-
-    public WebSocketSession getDevice(
-            String deviceId
-    ){
-
-        return devices.get(deviceId);
-
-    }
+        WebSocketSession oldSession =
+                sessions.get(key);
 
 
 
-    public WebSocketSession getBrowser(
-            String deviceId
-    ){
+        // close old connection
+        if(oldSession != null
+                && oldSession.isOpen()){
 
-        return browsers.get(deviceId);
+            try {
 
-    }
+                oldSession.close();
 
+            }
+            catch(Exception e){
 
-
-
-    public void removeDevice(
-            String deviceId
-    ){
-
-        devices.remove(deviceId);
-
-    }
-
-
-
-    public void removeBrowser(
-            String deviceId
-    ){
-
-        browsers.remove(deviceId);
-
-    }
-
-
-
-
-    public void sendToDevice(
-            String deviceId,
-            String message
-    ){
-
-        try{
-
-            WebSocketSession session =
-                    devices.get(deviceId);
-
-
-            if(session!=null && session.isOpen()){
-
-                session.sendMessage(
-                        new TextMessage(message)
+                log.error(
+                    "Old session close error",
+                    e
                 );
 
             }
 
         }
-        catch(Exception e){
 
-            e.printStackTrace();
 
-        }
+
+        sessions.put(
+                key,
+                session
+        );
+
+
+
+        log.info(
+                "Session Added : {}",
+                key
+        );
 
 
     }
 
-    public void sendToBrowser(
-        String deviceId,
-        String message
-){
 
-    try{
 
-        WebSocketSession session =
-                browsers.get(deviceId);
 
-        if(session!=null && session.isOpen()){
 
-            session.sendMessage(
-                    new TextMessage(message)
+
+
+    /**
+     * Get session
+     */
+    public WebSocketSession getSession(
+            String deviceId,
+            String role,
+            String stream
+    ){
+
+        return sessions.get(
+                generateKey(
+                        deviceId,
+                        role,
+                        stream
+                )
+        );
+
+    }
+
+
+
+
+
+
+
+    /**
+     * Remove session
+     */
+    public void removeSession(
+            String deviceId,
+            String role,
+            String stream
+    ){
+
+
+        String key =
+                generateKey(
+                        deviceId,
+                        role,
+                        stream
+                );
+
+
+        sessions.remove(key);
+
+
+        log.info(
+                "Session Removed : {}",
+                key
+        );
+
+
+    }
+
+
+
+
+
+
+
+    /**
+     * Send message
+     */
+    public boolean sendMessage(
+            String deviceId,
+            String targetRole,
+            String stream,
+            String message
+    ){
+
+
+        try{
+
+
+            WebSocketSession session =
+                    getSession(
+                            deviceId,
+                            targetRole,
+                            stream
+                    );
+
+
+
+            if(session == null
+                    ||
+               !session.isOpen()){
+
+
+                log.warn(
+                    "Target session unavailable {} {} {}",
+                    deviceId,
+                    targetRole,
+                    stream
+                );
+
+
+                return false;
+
+            }
+
+
+
+
+
+            synchronized(session){
+
+
+                session.sendMessage(
+                        new TextMessage(message)
+                );
+
+
+            }
+
+
+
+            log.info(
+                "Message sent {} {}",
+                stream,
+                deviceId
             );
 
+
+            return true;
+
+
+
+        }
+        catch(Exception e){
+
+
+            log.error(
+                "Message send failed",
+                e
+            );
+
+
+            return false;
+
         }
 
-    }catch(Exception e){
-
-        e.printStackTrace();
 
     }
 
-}
+
+
+
+
+
+
+    /**
+     * Remove all device sessions
+     */
+    public void removeDeviceSessions(
+            String deviceId
+    ){
+
+
+        sessions.entrySet()
+                .removeIf(entry -> {
+
+                    boolean remove =
+                            entry.getKey()
+                            .startsWith(deviceId+"_");
+
+
+                    if(remove){
+
+                        try{
+
+                            entry.getValue()
+                            .close();
+
+                        }
+                        catch(Exception ignored){}
+
+
+                    }
+
+
+                    return remove;
+
+
+                });
+
+
+
+        log.info(
+                "All sessions removed : {}",
+                deviceId
+        );
+
+
+    }
+
+
+
+
+
+
+
+    /**
+     * Connection check
+     */
+    public boolean isConnected(
+            String deviceId,
+            String role,
+            String stream
+    ){
+
+
+        WebSocketSession session =
+                getSession(
+                        deviceId,
+                        role,
+                        stream
+                );
+
+
+        return session != null
+                &&
+                session.isOpen();
+
+
+    }
+
 
 
 }

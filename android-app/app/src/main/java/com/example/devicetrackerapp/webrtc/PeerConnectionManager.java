@@ -2,10 +2,11 @@ package com.example.devicetrackerapp.webrtc;
 
 import android.content.Context;
 import android.util.Log;
-
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.CameraVideoCapturer;
+import android.view.Display;
+import android.view.WindowManager;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.MediaConstraints;
@@ -20,6 +21,11 @@ import org.webrtc.SessionDescription;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import android.content.Intent;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
+import org.webrtc.ScreenCapturerAndroid;
+import android.app.Activity;
 
 public class PeerConnectionManager {
 
@@ -45,10 +51,15 @@ public class PeerConnectionManager {
 
     private AudioTrack localAudioTrack;
 
-    public PeerConnectionManager(
-            Context context,
-            SignalingClient signalingClient
-    ) {
+    private ScreenCapturerAndroid screenCapturer;
+
+    private VideoTrack screenVideoTrack;
+
+    private VideoSource screenVideoSource;
+
+    private MediaProjectionManager projectionManager;
+
+    public PeerConnectionManager(Context context, SignalingClient signalingClient) {
 
         this.context = context;
 
@@ -207,6 +218,60 @@ public class PeerConnectionManager {
 
     }
 
+    public void startScreenCapture(Intent data, int resultCode) {
+
+        stopCapture();
+
+        surfaceTextureHelper = SurfaceTextureHelper.create(
+                        "ScreenCaptureThread",
+                        eglBase.getEglBaseContext()
+                );
+
+        screenCapturer = new ScreenCapturerAndroid(
+                        data,
+                        new MediaProjection.Callback() {
+                        }
+                );
+
+        screenVideoSource = factory.createVideoSource(false);
+
+        screenCapturer.initialize(
+                surfaceTextureHelper,
+                context,
+                screenVideoSource.getCapturerObserver()
+        );
+
+        try {
+            screenCapturer.startCapture(720, 1280, 30);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+        }
+
+        screenVideoTrack = factory.createVideoTrack("SCREEN_TRACK", screenVideoSource);
+
+        audioSource = factory.createAudioSource(new MediaConstraints());
+
+        localAudioTrack = factory.createAudioTrack("AUDIO_TRACK", audioSource);
+
+        if (peerConnection != null) {
+
+            peerConnection.addTrack(
+                    screenVideoTrack,
+                    Collections.singletonList("stream")
+            );
+
+            peerConnection.addTrack(
+                    localAudioTrack,
+                    Collections.singletonList("stream")
+            );
+
+        }
+
+    }
+
     public VideoTrack getLocalVideoTrack() {
 
         return localVideoTrack;
@@ -223,6 +288,23 @@ public class PeerConnectionManager {
                 videoCapturer = null;
             }
 
+            if (screenCapturer != null) {
+
+                screenCapturer.stopCapture();
+                screenCapturer.dispose();
+                screenCapturer = null;
+
+            }
+
+            if (screenVideoSource != null) {
+
+                screenVideoSource.dispose();
+                screenVideoSource = null;
+
+            }
+
+            screenVideoTrack = null;
+
             if (surfaceTextureHelper != null) {
                 surfaceTextureHelper.dispose();
                 surfaceTextureHelper = null;
@@ -235,6 +317,12 @@ public class PeerConnectionManager {
     public void release() {
 
         stopCapture();
+
+        if (screenVideoSource != null) {
+            screenVideoSource.dispose();
+            screenVideoSource = null;
+
+        }
 
         if (peerConnection != null) {
             peerConnection.close();
@@ -298,8 +386,7 @@ public class PeerConnectionManager {
 
                         );
 
-                        SignalMessage message =
-                                new SignalMessage();
+                        SignalMessage message = new SignalMessage();
 
                         message.setType("offer");
 
@@ -307,6 +394,28 @@ public class PeerConnectionManager {
                                 sessionDescription.description
                         );
 
+                        message.setScreenWidth(
+                                context.getResources()
+                                        .getDisplayMetrics()
+                                        .widthPixels
+                        );
+
+                        message.setScreenHeight(
+                                context.getResources()
+                                        .getDisplayMetrics()
+                                        .heightPixels
+                        );
+
+                        WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+
+                        int rotation = 0;
+
+                        if (windowManager != null) {
+                            Display display = windowManager.getDefaultDisplay();
+                            rotation = display.getRotation();
+                        }
+
+                        message.setRotation(rotation);
 
                         signalingClient.send(message);
 
@@ -363,15 +472,7 @@ public class PeerConnectionManager {
 
     }
 
-    public void addIceCandidate(
-
-            String sdpMid,
-
-            int sdpIndex,
-
-            String candidate
-
-    ) {
+    public void addIceCandidate(String sdpMid, int sdpIndex, String candidate) {
 
         IceCandidate iceCandidate =
 
@@ -393,4 +494,9 @@ public class PeerConnectionManager {
 
     }
 
+    public VideoTrack getScreenVideoTrack() {
+
+        return screenVideoTrack;
+
+    }
 }

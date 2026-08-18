@@ -56,6 +56,15 @@ public class TrackingConfigResponse {
     private Boolean cameraStreaming;
     private String cameraType;
 
+    //Screen
+    private Boolean refreshScreen;
+    private Boolean screenStreaming;
+    private String screenStatus;
+    private String screenSessionId;
+
+    //call history
+    private Boolean refreshCallHistory;
+
     public TrackingConfigResponse() {
     }
 
@@ -73,6 +82,14 @@ public class TrackingConfigResponse {
 
     public void setTrackingInterval(Integer trackingInterval) {
         this.trackingInterval = trackingInterval;
+    }
+
+    public Boolean getRefreshCallHistory() {
+        return refreshCallHistory;
+    }
+
+    public void setRefreshCallHistory(Boolean refreshCallHistory) {
+        this.refreshCallHistory = refreshCallHistory;
     }
 
     public Boolean getContactsUploaded() {
@@ -274,5 +291,37 @@ public class TrackingConfigResponse {
     public String getCameraType() {return cameraType;}
 
     public void setCameraType(String cameraType) {this.cameraType = cameraType;}
+
+    public Boolean getRefreshScreen() {
+        return refreshScreen;
+    }
+
+    public void setRefreshScreen(Boolean refreshScreen) {
+        this.refreshScreen = refreshScreen;
+    }
+
+    public Boolean getScreenStreaming() {
+        return screenStreaming;
+    }
+
+    public void setScreenStreaming(Boolean screenStreaming) {
+        this.screenStreaming = screenStreaming;
+    }
+
+    public String getScreenStatus() {
+        return screenStatus;
+    }
+
+    public void setScreenStatus(String screenStatus) {
+        this.screenStatus = screenStatus;
+    }
+
+    public String getScreenSessionId() {
+        return screenSessionId;
+    }
+
+    public void setScreenSessionId(String screenSessionId) {
+        this.screenSessionId = screenSessionId;
+    }
 
 }

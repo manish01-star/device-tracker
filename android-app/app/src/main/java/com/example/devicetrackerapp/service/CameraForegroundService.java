@@ -97,7 +97,7 @@ public class CameraForegroundService extends Service {
             return START_NOT_STICKY;
         }
 
-        signalingClient = new SignalingClient(deviceId,new SignalingClient.Listener() {
+        signalingClient = new SignalingClient(deviceId,"camera", new SignalingClient.Listener() {
 
             @Override
             public void onConnected() {

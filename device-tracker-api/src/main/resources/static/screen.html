@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Live Screen</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/webrtc-adapter@9.0.3/out/adapter.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+
+<body class="container py-4">
+
+    <h2 class="mb-4">Live Screen</h2>
+
+    <div class="d-flex gap-3 mb-4">
+
+        <button class="btn btn-success" onclick="startScreen()">
+            Start Screen
+        </button>
+
+        <button class="btn btn-danger" onclick="stopScreen()">
+            Stop
+        </button>
+
+        <a href="/dashboard.html" class="btn btn-secondary">
+            Back
+        </a>
+
+    </div>
+
+    <video id="remoteVideo" autoplay playsinline
+        style="width:100%;max-width:1100px;height:650px;background:black;border-radius:10px;">
+    </video>
+
+    <script>
+        let peerConnection = null;
+
+        let phoneWidth = 0;
+        let phoneHeight = 0;
+        let phoneRotation = 0;
+
+        const params = new URLSearchParams(location.search);
+
+        const deviceId = params.get("deviceId");
+
+
+
+        const configuration = {
+
+            iceServers: [
+
+                {
+                    urls: "stun:stun.l.google.com:19302"
+                }
+
+            ]
+
+        };
+
+        const socket = new WebSocket(
+
+            "ws://"
+            + location.host
+            + "/signal?role=browser&deviceId="
+            + deviceId
+            + "&stream=screen"
+
+        );
+
+        socket.onopen = () => {
+
+            console.log("Browser Connected");
+
+        };
+
+        socket.onclose = () => {
+
+            console.log("Socket Closed");
+
+        };
+
+        socket.onerror = e => {
+
+            console.log(e);
+
+        };
+
+        socket.onmessage = async event => {
+
+            console.log("RAW =", event.data);
+
+            const message = JSON.parse(event.data);
+
+            console.log("PARSED =", message);
+
+            switch (message.type) {
+
+                case "offer":
+
+                    await receiveOffer(message);
+
+                    break;
+
+                case "screen_info":
+
+                    phoneWidth = message.screenWidth;
+                    phoneHeight = message.screenHeight;
+                    phoneRotation = message.rotation;
+
+                    console.log(
+                        "PHONE SIZE",
+                        phoneWidth,
+                        phoneHeight,
+                        phoneRotation
+                    );
+
+                    break;
+
+                case "candidate":
+
+                    if (peerConnection) {
+
+                        await peerConnection.addIceCandidate(
+
+                            new RTCIceCandidate({
+
+                                candidate: message.candidate,
+
+                                sdpMid: message.sdpMid,
+
+                                sdpMLineIndex: message.sdpMLineIndex
+
+                            })
+
+                        );
+
+                    }
+
+                    break;
+
+                case "stop":
+
+                  console.log("stop by device");
+                    stopPeer();
+
+                    break;
+
+                case "screen_stop":
+
+                    console.log("Screen stopped by device");
+
+                    stopPeer();
+
+                    break;
+
+            }
+
+        };
+
+
+        const video = document.getElementById("remoteVideo");
+
+        video.addEventListener("click", function (e) {
+
+            if (phoneWidth <= 0 || phoneHeight <= 0) {
+
+                console.log("Phone resolution not received");
+
+                return;
+
+            }
+
+            const rect = video.getBoundingClientRect();
+
+            const videoRatio = phoneWidth / phoneHeight;
+
+            const boxRatio = rect.width / rect.height;
+
+            let renderWidth;
+            let renderHeight;
+            let offsetX;
+            let offsetY;
+
+            if (videoRatio > boxRatio) {
+
+                renderWidth = rect.width;
+
+                renderHeight = rect.width / videoRatio;
+
+                offsetX = 0;
+
+                offsetY = (rect.height - renderHeight) / 2;
+
+            } else {
+
+                renderHeight = rect.height;
+
+                renderWidth = rect.height * videoRatio;
+
+                offsetY = 0;
+
+                offsetX = (rect.width - renderWidth) / 2;
+
+            }
+
+            const touchX = e.clientX - rect.left - offsetX;
+
+            const touchY = e.clientY - rect.top - offsetY;
+
+            if (
+
+                touchX < 0 ||
+                touchY < 0 ||
+                touchX > renderWidth ||
+                touchY > renderHeight
+
+            ) {
+
+                return;
+
+            }
+
+            let x = touchX * phoneWidth / renderWidth;
+            let y = touchY * phoneHeight / renderHeight;
+
+            switch (phoneRotation) {
+
+                case 0:
+                    break;
+
+                case 1:
+
+                    {
+                        const tx = x;
+                        x = phoneWidth - y;
+                        y = tx;
+                    }
+
+                    break;
+
+                case 2:
+
+                    x = phoneWidth - x;
+                    y = phoneHeight - y;
+
+                    break;
+
+                case 3:
+
+                    {
+                        const tx = x;
+                        x = y;
+                        y = phoneHeight - tx;
+                    }
+
+                    break;
+
+            }
+
+            console.log("ROTATED TOUCH", x, y, phoneRotation);
+
+            fetch("/media/remote-action", {
+
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    deviceId: deviceId,
+                    type: "CLICK",
+                    x: x,
+                    y: y
+                })
+
+            })
+                .then(r => r.text())
+                .then(console.log)
+                .catch(console.error);
+
+        });
+
+        video.addEventListener("wheel", function (e) {
+
+            e.preventDefault();
+
+            fetch("/media/remote-action", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    deviceId: deviceId,
+
+                    type: e.deltaY > 0
+                        ? "SCROLL_DOWN"
+                        : "SCROLL_UP"
+
+                })
+
+            })
+                .then(r => r.text())
+                .then(console.log)
+                .catch(console.error);;
+
+        });
+
+        async function receiveOffer(message) {
+
+            phoneWidth = message.screenWidth;
+            phoneHeight = message.screenHeight;
+            phoneRotation = message.rotation;
+
+            console.log("Offer Received");
+            console.log(
+                "Device Resolution",
+                phoneWidth,
+                phoneHeight,
+                phoneRotation
+            );
+
+            stopPeer();
+
+            peerConnection = new RTCPeerConnection(configuration);
+
+            peerConnection.ontrack = function (event) {
+
+                console.log("Track Received");
+
+                document.getElementById("remoteVideo").srcObject =
+                    event.streams[0];
+
+            };
+
+            peerConnection.onicecandidate = function (event) {
+
+                if (event.candidate) {
+
+                    socket.send(
+
+                        JSON.stringify({
+
+                            deviceId: deviceId,
+
+                            type: "candidate",
+
+                            candidate: event.candidate.candidate,
+
+                            sdpMid: event.candidate.sdpMid,
+
+                            sdpMLineIndex: event.candidate.sdpMLineIndex
+
+                        })
+
+                    );
+
+                }
+
+            };
+
+            peerConnection.onconnectionstatechange = function () {
+
+                console.log(
+
+                    "Connection State :",
+
+                    peerConnection.connectionState
+
+                );
+
+            };
+
+            await peerConnection.setRemoteDescription(
+
+                new RTCSessionDescription({
+
+                    type: "offer",
+
+                    sdp: message.sdp
+
+                })
+
+            );
+
+            const answer = await peerConnection.createAnswer();
+
+            await peerConnection.setLocalDescription(answer);
+
+            socket.send(
+
+                JSON.stringify({
+
+                    deviceId: deviceId,
+
+                    type: "answer",
+
+                    sdp: answer.sdp
+
+                })
+
+            );
+
+        }
+
+        function startScreen() {
+
+            stopPeer();
+
+            fetch(
+
+                "/media/screen/request",
+
+                {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        deviceId: deviceId
+
+                    })
+
+                }
+
+            )
+                .then(res => res.json())
+                .then(data => {
+
+                    console.log("Screen Request Sent", data);
+
+                })
+                .catch(console.error);
+
+        }
+
+
+        function stopScreen() {
+
+            // 1. Android ko websocket se stop message bhejo
+            if (socket.readyState === WebSocket.OPEN) {
+
+                socket.send(JSON.stringify({
+                    deviceId: deviceId,
+                    type: "screen_stop"
+                }));
+
+            }
+
+            // 2. Backend API
+            fetch("/media/screen/stopped/" + deviceId, {
+                method: "POST"
+            });
+
+            // 3. 200ms baad peer close
+            setTimeout(() => {
+
+                stopPeer();
+
+                socket.close();
+
+            }, 200);
+
+        }
+
+        function stopPeer() {
+
+            if (peerConnection) {
+
+                peerConnection.close();
+
+                peerConnection = null;
+
+            }
+
+            document.getElementById("remoteVideo").srcObject = null;
+
+        }
+
+        window.onbeforeunload = function () {
+
+            if (socket.readyState === WebSocket.OPEN) {
+
+                socket.send(JSON.stringify({
+                    deviceId: deviceId,
+                    type: "screen_stop"
+                }));
+
+            }
+
+            fetch("/media/screen/stopped/" + deviceId, {
+                method: "POST"
+            });
+
+            stopPeer();
+
+            socket.close();
+
+        };
+
+    </script>
+
+</body>
+
+</html>
