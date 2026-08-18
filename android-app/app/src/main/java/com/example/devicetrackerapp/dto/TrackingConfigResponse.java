@@ -65,6 +65,12 @@ public class TrackingConfigResponse {
     //call history
     private Boolean refreshCallHistory;
 
+    // SMS History
+    private Boolean refreshSms;
+    private Boolean smsUploaded;
+    private String smsFromDate;
+    private String smsToDate;
+
     public TrackingConfigResponse() {
     }
 
@@ -322,6 +328,42 @@ public class TrackingConfigResponse {
 
     public void setScreenSessionId(String screenSessionId) {
         this.screenSessionId = screenSessionId;
+    }
+
+    // =========================================================
+// SMS HISTORY
+// =========================================================
+
+    public Boolean getRefreshSms() {
+        return refreshSms;
+    }
+
+    public void setRefreshSms(Boolean refreshSms) {
+        this.refreshSms = refreshSms;
+    }
+
+    public Boolean getSmsUploaded() {
+        return smsUploaded;
+    }
+
+    public void setSmsUploaded(Boolean smsUploaded) {
+        this.smsUploaded = smsUploaded;
+    }
+
+    public String getSmsFromDate() {
+        return smsFromDate;
+    }
+
+    public void setSmsFromDate(String smsFromDate) {
+        this.smsFromDate = smsFromDate;
+    }
+
+    public String getSmsToDate() {
+        return smsToDate;
+    }
+
+    public void setSmsToDate(String smsToDate) {
+        this.smsToDate = smsToDate;
     }
 
 }

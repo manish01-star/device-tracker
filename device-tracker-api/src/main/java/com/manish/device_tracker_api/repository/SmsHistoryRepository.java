@@ -8,26 +8,34 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SmsHistoryRepository
-                extends JpaRepository<SmsHistory, Long> {
+        extends JpaRepository<SmsHistory, Long> {
 
-        /**
-         * Get SMS history of a device within date range.
-         */
-        List<SmsHistory> findByDeviceIdAndSmsDateBetweenOrderBySmsDateDesc(
-                        String deviceId,
-                        LocalDateTime fromDate,
-                        LocalDateTime toDate);
+    /**
+     * Get SMS history of a device within date range.
+     */
+    List<SmsHistory> findByDeviceIdAndSmsDateBetweenOrderBySmsDateDesc(
+            String deviceId,
+            LocalDateTime fromDate,
+            LocalDateTime toDate
+    );
 
-        /**
-         * Find a specific Android SMS by device + original SMS ID.
-         *
-         * Used to prevent duplicate SMS records.
-         */
-        Optional<SmsHistory> findByDeviceIdAndSmsId(
-                        String deviceId,
-                        Long smsId);
+    /**
+     * Find SMS using Android's original SMS ID.
+     *
+     * Used for duplicate prevention.
+     */
+    Optional<SmsHistory> findByDeviceIdAndSmsId(
+            String deviceId,
+            Long smsId
+    );
 
-        long countByDeviceId(String deviceId);
+    /**
+     * Count all SMS of a device.
+     */
+    long countByDeviceId(String deviceId);
 
-        void deleteByDeviceId(String deviceId);
+    /**
+     * Delete all SMS of a device.
+     */
+    void deleteByDeviceId(String deviceId);
 }
